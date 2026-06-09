@@ -5,7 +5,7 @@ import type { UserRole } from '@/lib/edge/jwt'
 
 const PUBLIC_PATHS = ['/login', '/api/auth']
 
-// Route nhạy cảm — Layer 1 chặn nhanh tại middleware (không query DB)
+// Route nhạy cảm — Layer 1 chặn nhanh tại proxy (không query DB)
 const PROTECTED: Array<{ pattern: RegExp; methods: string[]; roles: UserRole[] }> = [
   { pattern: /^\/api\/rooms/,       methods: ['POST', 'PUT', 'PATCH', 'DELETE'], roles: ['ADMIN'] },
   { pattern: /^\/api\/machines(?!\/batch)/, methods: ['POST', 'DELETE'],          roles: ['ADMIN', 'MANAGER'] },
@@ -17,7 +17,7 @@ const PROTECTED: Array<{ pattern: RegExp; methods: string[]; roles: UserRole[] }
   { pattern: /^\/stats/,            methods: ['*'],                              roles: ['ADMIN', 'MANAGER'] },
 ]
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
 
   if (PUBLIC_PATHS.some(p => pathname.startsWith(p))) {
