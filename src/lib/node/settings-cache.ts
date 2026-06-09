@@ -13,5 +13,5 @@ export const getCachedSettings = unstable_cache(
 )
 
 export function invalidateSettingsCache() {
-  revalidateTag('settings')
+  revalidateTag('settings', 'max')
 }
