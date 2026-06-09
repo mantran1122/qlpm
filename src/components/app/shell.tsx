@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { toast } from 'sonner'
@@ -267,11 +267,20 @@ function useBreadcrumb() {
   return ['Hệ thống', ...(map[pathname] ?? ['—'])]
 }
 
+function LoginSuccessToast() {
+  const searchParams = useSearchParams()
+  useEffect(() => {
+    if (searchParams.get('login') === 'success') {
+      toast.success('Đăng nhập thành công')
+    }
+  }, [searchParams])
+  return null
+}
+
 export function Shell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
   const pathname = usePathname()
-  const searchParams = useSearchParams()
   const [theme, setThemeState] = useState('light')
   const [user, setUser] = useState<UserState | null>(null)
   const [profileOpen, setProfileOpen] = useState(false)
@@ -286,12 +295,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
   }, [])
 
   useEffect(() => { setOpen(false) }, [pathname])
-
-  useEffect(() => {
-    if (searchParams.get('login') === 'success') {
-      toast.success('Đăng nhập thành công')
-    }
-  }, [searchParams])
 
   // Fetch user profile
   const refreshUser = () => {
@@ -332,6 +335,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
+      <Suspense fallback={null}><LoginSuccessToast /></Suspense>
       <Sidebar open={open} onClose={() => setOpen(false)} collapsed={collapsed} onToggle={toggleCollapsed} user={user} onProfile={() => setProfileOpen(true)} />
       <div className="main-area" style={{ flex: 1, minWidth: 0, marginLeft: sbWidth, display: 'flex', flexDirection: 'column', transition: 'margin-left .25s cubic-bezier(.3,.9,.3,1)' }}>
         <Topbar breadcrumb={breadcrumb} onMenu={() => setOpen(true)} theme={theme} setTheme={setTheme} user={user} onProfile={() => setProfileOpen(true)} />
