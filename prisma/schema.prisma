@@ -1,0 +1,251 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Floor {
+  id    Int    @id @default(autoincrement())
+  name  String @unique @db.VarChar(10)
+  rooms Room[]
+
+  @@map("floors")
+}
+
+model Room {
+  id              Int              @id @default(autoincrement())
+  floorId         Int
+  roomCode        String           @unique @db.VarChar(10)
+  totalMachines   Int
+  cpuSpec         String?          @db.VarChar(50)
+  ramSpec         String?          @db.VarChar(30)
+  diskSpec        String?          @db.VarChar(50)
+  monitorSpec     String?          @db.VarChar(30)
+  notes           String?          @db.Text
+  floor           Floor            @relation(fields: [floorId], references: [id])
+  machines        Machine[]
+  maintenanceLogs MaintenanceLog[]
+
+  @@map("rooms")
+}
+
+model Machine {
+  id                Int       @id @default(autoincrement())
+  roomId            Int
+  machineNo         Int
+  isTeacher         Boolean   @default(false)
+  softwareError     String?   @db.Text
+  caseError         String?   @db.Text
+  cpuError          String?   @db.Text
+  ramError          String?   @db.Text
+  diskError         String?   @db.Text
+  powerError        String?   @db.Text
+  monitorError      String?   @db.Text
+  monitorCableError String?   @db.Text
+  powerCableError   String?   @db.Text
+  mouseError        String?   @db.Text
+  networkError      String?   @db.Text
+  keyboardError     String?   @db.Text
+  extraNotes        String?   @db.Text
+  isFaulty          Boolean   @default(false)
+  lastMaintainedAt  DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  room              Room      @relation(fields: [roomId], references: [id])
+  maintenanceLogs   MaintenanceLog[]
+
+  @@unique([roomId, machineNo, isTeacher])
+  @@map("machines")
+}
+
+model Software {
+  id       Int              @id @default(autoincrement())
+  name     String           @db.VarChar(100)
+  category SoftwareCategory
+  notes    String?          @db.Text
+
+  @@map("software_list")
+}
+
+enum SoftwareCategory {
+  VAN_PHONG
+  DO_HOA
+  LAP_TRINH_CNTT
+  MANG
+  KE_TOAN_THONG_KE
+}
+
+model User {
+  id            Int          @id @default(autoincrement())
+  username      String       @unique @db.VarChar(50)
+  email         String       @unique @db.VarChar(100)
+  passwordHash  String       @db.VarChar(255)
+  role          UserRole     @default(TECHNICIAN)
+  isActive      Boolean      @default(true)
+  tokenVersion  Int          @default(0)
+  lastLoginAt   DateTime?
+  lastLoginIp   String?      @db.VarChar(45)
+  lastLoginUa   String?      @db.VarChar(500)
+  loginAttempts Int          @default(0)
+  lockedUntil   DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  profile                UserProfile?
+  auditLogs              AuditLog[]
+  createdMaintenanceLogs MaintenanceLog[]
+  notifications          Notification[]
+
+  @@map("users")
+}
+
+model UserProfile {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @unique
+  displayName  String   @db.VarChar(80)
+  employeeCode String?  @db.VarChar(20)
+  department   String?  @db.VarChar(100)
+  phone        String?  @db.VarChar(15)
+  avatar       String?  @db.VarChar(255)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  TECHNICIAN
+}
+
+model Technician {
+  id              Int              @id @default(autoincrement())
+  name            String           @db.VarChar(80)
+  phone           String?          @db.VarChar(15)
+  department      String?          @db.VarChar(100)
+  notes           String?          @db.Text
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  maintenanceLogs MaintenanceLog[]
+
+  @@map("technicians")
+}
+
+model MaintenanceLog {
+  id                   Int         @id @default(autoincrement())
+  roomId               Int?
+  machineId            Int?
+  machineNo            Int?
+  actionType           String?     @db.VarChar(50)
+  completedAt          DateTime?
+  createdById          Int?
+  isSupplyIntake       Boolean     @default(false)
+  maintenanceDate      DateTime    @db.Date
+  caseQty              Int         @default(0)
+  cpuQty               Int         @default(0)
+  ramQty               Int         @default(0)
+  diskQty              Int         @default(0)
+  powerQty             Int         @default(0)
+  monitorQty           Int         @default(0)
+  monitorCableQty      Int         @default(0)
+  powerCableQty        Int         @default(0)
+  mouseQty             Int         @default(0)
+  networkQty           Int         @default(0)
+  keyboardQty          Int         @default(0)
+  recCaseQty           Int         @default(0)
+  recCpuQty            Int         @default(0)
+  recRamQty            Int         @default(0)
+  recDiskQty           Int         @default(0)
+  recPowerQty          Int         @default(0)
+  recMonitorQty        Int         @default(0)
+  recMonitorCableQty   Int         @default(0)
+  recPowerCableQty     Int         @default(0)
+  recMouseQty          Int         @default(0)
+  recNetworkQty        Int         @default(0)
+  recKeyboardQty       Int         @default(0)
+  notes                String?     @db.Text
+  softwareErrorsBefore Int         @default(0)
+  hardwareErrorsBefore Int         @default(0)
+  softwareErrorsAfter  Int         @default(0)
+  hardwareErrorsAfter  Int         @default(0)
+  technicianName       String?     @db.VarChar(50) @map("technician")
+  technicianId         Int?
+  createdAt            DateTime    @default(now())
+  room                 Room?       @relation(fields: [roomId], references: [id])
+  machine              Machine?    @relation(fields: [machineId], references: [id])
+  technician           Technician? @relation(fields: [technicianId], references: [id])
+  createdBy            User?       @relation(fields: [createdById], references: [id])
+
+  @@index([createdById])
+  @@index([machineId])
+  @@index([actionType])
+  @@map("maintenance_logs")
+}
+
+model SystemSetting {
+  key       String   @id @db.VarChar(100)
+  value     String   @db.Text
+  isSecret  Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+  updatedBy Int?
+
+  @@map("system_settings")
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  action    String   @db.VarChar(100)
+  target    String?  @db.VarChar(255)
+  detail    Json?
+  ip        String?  @db.VarChar(45)
+  ua        String?  @db.VarChar(500)
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+enum NotifType {
+  INFO
+  WARNING
+  ERROR
+  SUCCESS
+}
+
+model Notification {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  title       String    @db.VarChar(200)
+  message     String    @db.Text
+  type        NotifType @default(INFO)
+  link        String?   @db.VarChar(255)
+  isRead      Boolean   @default(false)
+  readAt      DateTime?
+  broadcastId Int?
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead, createdAt])
+  @@index([broadcastId])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model NotificationDebounce {
+  id         Int      @id @default(autoincrement())
+  triggerKey String   @unique @db.VarChar(100)
+  lastSentAt DateTime @default(now())
+  expiresAt  DateTime
+
+  @@index([expiresAt])
+  @@map("notification_debounce")
+}

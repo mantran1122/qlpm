@@ -1,0 +1,3 @@
+CREATE INDEX `maintenance_logs_createdById_idx` ON `maintenance_logs`(`createdById`);
+ALTER TABLE `maintenance_logs` ADD CONSTRAINT `maintenance_logs_createdById_fkey` FOREIGN KEY (`createdById`) REFERENCES `users`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE `audit_logs` ADD CONSTRAINT `audit_logs_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `users`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
