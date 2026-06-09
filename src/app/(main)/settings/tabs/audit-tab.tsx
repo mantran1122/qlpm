@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Card, CardHead } from '@/components/app/primitives'
+import { Card } from '@/components/app/primitives'
 import { Icon } from '@/components/app/icons'
 import { formatDistanceToNow } from 'date-fns'
 import { vi } from 'date-fns/locale'
@@ -13,7 +13,7 @@ interface AuditEntry {
   userDisplayName: string | null
   action: string
   target: string | null
-  detail: unknown
+  detail: Record<string, unknown> | null
   ip: string | null
   ua: string | null
   createdAt: string
