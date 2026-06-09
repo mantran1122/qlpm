@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
     select: {
       id: true, username: true, email: true, passwordHash: true,
       role: true, isActive: true, lockedUntil: true, loginAttempts: true, tokenVersion: true,
+      lastLoginIp: true, lastLoginUa: true,
     },
   })
 
