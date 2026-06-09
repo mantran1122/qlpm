@@ -136,7 +136,7 @@ function MachineCell({ m, onClick, isBulkMode, isSelected, onToggleSelect, bulkM
     )
   }
   return (
-    <button className="mcell" onClick={onClick} style={{ background: color }} title={`Máy ${m.id} · ${STATUS[m.status as keyof typeof STATUS]?.status}`}>
+    <button className="mcell" onClick={onClick} style={{ background: color }} title={`Máy ${m.id} · ${STATUS[m.status as keyof typeof STATUS]?.label}`}>
       {m.isTeacher ? (
         <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1, gap: 1 }}>
           <span style={{ fontSize: 9, fontWeight: 700, opacity: .85, letterSpacing: '.04em' }}>GV</span>
@@ -1034,8 +1034,11 @@ export default function RoomDetailPage({ params }: { params: Promise<{ room: str
         )
       })()}
       {showBulkDialog && (
-        <Dialog open={showBulkDialog} onClose={() => setShowBulkDialog(false)} title={`Cập nhật lỗi — ${selectedIds.size} máy`}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 8 }}>
+        <Dialog open={showBulkDialog} onClose={() => setShowBulkDialog(false)} width={480}>
+          <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)' }}>
+            <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-.01em' }}>{`Cập nhật lỗi — ${selectedIds.size} máy`}</div>
+          </div>
+          <div style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
             <p style={{ margin: 0, fontSize: 13, color: 'var(--text-faint)' }}>
               Chọn loại lỗi để áp dụng cho tất cả {selectedIds.size} máy đã chọn.
               Các lỗi hiện có của từng máy sẽ được giữ nguyên, chỉ thêm lỗi mới.
