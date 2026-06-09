@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { AlertCircle, Loader2 } from 'lucide-react'
@@ -15,10 +15,8 @@ const ERROR_MAP: Record<string, string> = {
   unauthenticated: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
 }
 
-export default function LoginPage() {
+function LoginError() {
   const params = useSearchParams()
-  const [loading, setLoading] = useState(false)
-
   const error = useMemo(() => {
     const code = params.get('error')
     const email = params.get('email')
@@ -28,6 +26,23 @@ export default function LoginPage() {
     }
     return ERROR_MAP[code] ?? 'Đã xảy ra lỗi khi đăng nhập.'
   }, [params])
+
+  if (!error) return null
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'flex-start', gap: 8,
+      padding: '10px 14px', borderRadius: 10,
+      background: 'var(--err-bg)', color: 'var(--err-tx)',
+      fontSize: 13, fontWeight: 500, lineHeight: 1.4,
+    }}>
+      <AlertCircle size={17} strokeWidth={2} style={{ flexShrink: 0, marginTop: 1 }} />
+      <span>{error}</span>
+    </div>
+  )
+}
+
+export default function LoginPage() {
+  const [loading, setLoading] = useState(false)
 
   function handleLogin() {
     setLoading(true)
@@ -87,23 +102,7 @@ export default function LoginPage() {
           </div>
 
             {/* Error */}
-            {error && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: 8,
-                padding: '10px 14px',
-                borderRadius: 10,
-                background: 'var(--err-bg)',
-                color: 'var(--err-tx)',
-                fontSize: 13,
-                fontWeight: 500,
-                lineHeight: 1.4,
-              }}>
-                <AlertCircle size={17} strokeWidth={2} style={{ flexShrink: 0, marginTop: 1 }} />
-                <span>{error}</span>
-              </div>
-            )}
+            <Suspense fallback={null}><LoginError /></Suspense>
 
             {/* Google Sign-In */}
             <button
