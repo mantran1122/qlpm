@@ -1,6 +1,6 @@
 import { jwtVerify } from 'jose'
 
-export type UserRole = 'ADMIN' | 'MANAGER' | 'TECHNICIAN'
+export type UserRole = 'ADMIN' | 'MANAGER' | 'TECHNICIAN' | 'GUEST'
 
 export interface EdgeJwtPayload {
   userId: number

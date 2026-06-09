@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma'
 import { requireRole, requireRoleStrict, requireCsrf } from '@/lib/node/auth'
 import { recordAudit } from '@/lib/node/audit'
 import { rateLimit } from '@/lib/node/rate-limit'
+import bcrypt from 'bcryptjs'
 import type { NextRequest } from 'next/server'
 
 const ALLOWED_DOMAIN = 'nctu.edu.vn'
@@ -14,7 +15,7 @@ export async function GET(req: NextRequest) {
   const roleFilter = searchParams.get('role')
 
   const where: Record<string, unknown> = {}
-  if (roleFilter && ['ADMIN', 'MANAGER', 'TECHNICIAN'].includes(roleFilter)) {
+  if (roleFilter && ['ADMIN', 'MANAGER', 'TECHNICIAN', 'GUEST'].includes(roleFilter)) {
     where.role = roleFilter
   }
 
@@ -48,7 +49,7 @@ export async function POST(req: NextRequest) {
   const rl = rateLimit(`mutation:${auth.payload.userId}`, 60, 60)
   if (!rl.ok) return Response.json({ error: 'Quá nhiều yêu cầu' }, { status: 429 })
 
-  let body: { email?: string; role?: string; displayName?: string }
+  let body: { email?: string; role?: string; displayName?: string; password?: string }
   try { body = await req.json() } catch {
     return Response.json({ error: 'Body không hợp lệ' }, { status: 400 })
   }
@@ -59,18 +60,34 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: 'email và role là bắt buộc' }, { status: 400 })
   }
 
-  const normalizedEmail = email.toLowerCase().trim()
-  const domain = normalizedEmail.split('@')[1]
-  if (domain !== ALLOWED_DOMAIN) {
-    return Response.json({ error: `Chỉ chấp nhận email @${ALLOWED_DOMAIN}` }, { status: 422 })
-  }
-
-  if (!['ADMIN', 'MANAGER', 'TECHNICIAN'].includes(role)) {
+  if (!['ADMIN', 'MANAGER', 'TECHNICIAN', 'GUEST'].includes(role)) {
     return Response.json({ error: 'Role không hợp lệ' }, { status: 400 })
   }
 
-  // Username = phần trước @ của email
-  const username = normalizedEmail.split('@')[0]
+  const normalizedEmail = email.toLowerCase().trim()
+
+  if (role !== 'GUEST') {
+    const domain = normalizedEmail.split('@')[1]
+    if (domain !== ALLOWED_DOMAIN) {
+      return Response.json({ error: `Chỉ chấp nhận email @${ALLOWED_DOMAIN}` }, { status: 422 })
+    }
+  }
+
+  let passwordHash = ''
+  if (role === 'GUEST') {
+    if (!body.password?.trim()) {
+      return Response.json({ error: 'Mật khẩu là bắt buộc cho tài khoản khách' }, { status: 400 })
+    }
+    if (body.password.length < 10) {
+      return Response.json({ error: 'Mật khẩu tối thiểu 10 ký tự' }, { status: 400 })
+    }
+    passwordHash = await bcrypt.hash(body.password, 12)
+  }
+
+  // GUEST username = full email (tránh collision với nctu.edu.vn accounts)
+  const username = role === 'GUEST'
+    ? normalizedEmail
+    : normalizedEmail.split('@')[0]
 
   const dup = await prisma.user.findFirst({
     where: { OR: [{ email: normalizedEmail }, { username }] },
@@ -81,8 +98,8 @@ export async function POST(req: NextRequest) {
     data: {
       username,
       email: normalizedEmail,
-      passwordHash: '',  // OAuth-only — không dùng password
-      role: role as 'ADMIN' | 'MANAGER' | 'TECHNICIAN',
+      passwordHash,
+      role: role as 'ADMIN' | 'MANAGER' | 'TECHNICIAN' | 'GUEST',
       profile: displayName?.trim() ? {
         create: { displayName: displayName.trim() },
       } : {

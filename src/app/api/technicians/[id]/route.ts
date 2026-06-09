@@ -4,7 +4,7 @@ import { rateLimit } from '@/lib/node/rate-limit'
 import type { NextRequest } from 'next/server'
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const auth = await requireRole(req, 'ADMIN', 'MANAGER', 'TECHNICIAN')
+  const auth = await requireRole(req, 'ADMIN', 'MANAGER', 'TECHNICIAN', 'GUEST')
   if (!auth) return Response.json({ error: 'Chưa đăng nhập' }, { status: 401 })
 
   const { id } = await ctx.params

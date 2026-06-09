@@ -36,8 +36,16 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ id: string 
 
   // Đổi role → bump tokenVersion để revoke JWT cũ
   if (body.role !== undefined) {
-    if (!['ADMIN', 'MANAGER', 'TECHNICIAN'].includes(body.role)) {
+    if (!['ADMIN', 'MANAGER', 'TECHNICIAN', 'GUEST'].includes(body.role)) {
       return Response.json({ error: 'Role không hợp lệ' }, { status: 400 })
+    }
+    const changingToGuest = body.role === 'GUEST'
+    const currentlyGuest = target.role === 'GUEST'
+    if (changingToGuest !== currentlyGuest) {
+      return Response.json(
+        { error: 'Không thể đổi role giữa Khách và các role khác. Hãy xóa tài khoản và tạo lại.' },
+        { status: 422 }
+      )
     }
     userData.role = body.role
     userData.tokenVersion = { increment: 1 }

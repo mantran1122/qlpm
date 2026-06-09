@@ -22,7 +22,7 @@ export async function GET(
   req: NextRequest,
   ctx: RouteContext<'/api/machines/[id]'>
 ) {
-  const auth = await requireRole(req, 'ADMIN', 'MANAGER', 'TECHNICIAN')
+  const auth = await requireRole(req, 'ADMIN', 'MANAGER', 'TECHNICIAN', 'GUEST')
   if (!auth) return Response.json({ error: 'Chưa đăng nhập' }, { status: 401 })
 
   const { id } = await ctx.params

@@ -3,7 +3,7 @@ import { requireRole, requireCsrf } from '@/lib/node/auth'
 import type { NextRequest } from 'next/server'
 
 export async function GET(req: NextRequest) {
-  const auth = await requireRole(req, 'ADMIN', 'MANAGER', 'TECHNICIAN')
+  const auth = await requireRole(req, 'ADMIN', 'MANAGER', 'TECHNICIAN', 'GUEST')
   if (!auth) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
   const user = await prisma.user.findUnique({
@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   if (!requireCsrf(req)) return Response.json({ error: 'CSRF token không hợp lệ' }, { status: 403 })
 
-  const auth = await requireRole(req, 'ADMIN', 'MANAGER', 'TECHNICIAN')
+  const auth = await requireRole(req, 'ADMIN', 'MANAGER', 'TECHNICIAN', 'GUEST')
   if (!auth) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
   let body: { displayName?: string; employeeCode?: string; department?: string; phone?: string }

@@ -35,15 +35,22 @@ function Avatar({ src, initials, size = 38, radius = 10 }: { src?: string | null
 
 const NAV = [
   { key: 'dashboard',           href: '/',                      label: 'Dashboard',           icon: 'dashboard',  roles: ['ADMIN','MANAGER'] },
-  { key: 'dashboard-ktv',       href: '/dashboard/ktv',         label: 'Dashboard',           icon: 'dashboard',  roles: ['TECHNICIAN'] },
-  { key: 'rooms',               href: '/rooms',                  label: 'Phòng Máy',           icon: 'rooms',      roles: ['ADMIN','MANAGER','TECHNICIAN'] },
+  { key: 'dashboard-ktv',       href: '/dashboard/ktv',         label: 'Dashboard',           icon: 'dashboard',  roles: ['TECHNICIAN','GUEST'] },
+  { key: 'rooms',               href: '/rooms',                  label: 'Phòng Máy',           icon: 'rooms',      roles: ['ADMIN','MANAGER','TECHNICIAN','GUEST'] },
   { key: 'maintenance',         href: '/maintenance',            label: 'Nhật Ký Kỹ Thuật',   icon: 'wrench',     roles: ['ADMIN','MANAGER'] },
-  { key: 'maintenance-history', href: '/maintenance-history',   label: 'Lịch Sử Bảo Trì',    icon: 'wrench',     roles: ['TECHNICIAN'] },
-  { key: 'software',            href: '/software',               label: 'Phần Mềm - Phần Cứng', icon: 'software', roles: ['ADMIN','MANAGER','TECHNICIAN'] },
+  { key: 'maintenance-history', href: '/maintenance-history',   label: 'Lịch Sử Bảo Trì',    icon: 'wrench',     roles: ['TECHNICIAN','GUEST'] },
+  { key: 'software',            href: '/software',               label: 'Phần Mềm - Phần Cứng', icon: 'software', roles: ['ADMIN','MANAGER','TECHNICIAN','GUEST'] },
   { key: 'supplies',            href: '/supplies',               label: 'Vật Tư Tồn Kho',     icon: 'supplies',   roles: ['ADMIN','MANAGER'] },
   { key: 'statistics',          href: '/stats',                  label: 'Thống Kê',            icon: 'stats',      roles: ['ADMIN','MANAGER'] },
   { key: 'technicians',         href: '/technicians',            label: 'Kỹ Thuật Viên',       icon: 'users',      roles: ['ADMIN','MANAGER'] },
 ]
+
+const ROLE_LABELS: Record<import('@/lib/edge/jwt').UserRole, string> = {
+  ADMIN: 'Quản trị viên',
+  MANAGER: 'Quản lý',
+  TECHNICIAN: 'Kỹ thuật viên',
+  GUEST: 'Khách',
+}
 
 const SB_FULL = 240
 const SB_MINI = 68
@@ -81,7 +88,7 @@ function Sidebar({ open, onClose, collapsed, onToggle, user, onProfile }: {
   const displayName = user?.profile?.displayName ?? user?.email?.split('@')[0] ?? 'Người dùng'
   const department = user?.profile?.department ?? ''
   const initials = getInitials(displayName)
-  const roleLabel = user?.role === 'ADMIN' ? 'Quản trị viên' : user?.role === 'MANAGER' ? 'Quản lý' : 'Kỹ thuật viên'
+  const roleLabel = user?.role ? ROLE_LABELS[user.role as import('@/lib/edge/jwt').UserRole] ?? 'Khách' : 'Khách'
 
   return (
     <>

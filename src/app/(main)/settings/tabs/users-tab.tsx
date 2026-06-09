@@ -8,7 +8,7 @@ interface ApiUser {
   id: number
   username: string
   email: string
-  role: 'ADMIN' | 'MANAGER' | 'TECHNICIAN'
+  role: 'ADMIN' | 'MANAGER' | 'TECHNICIAN' | 'GUEST'
   isActive: boolean
   lockedUntil: string | null
   lastLoginAt: string | null
@@ -20,12 +20,14 @@ const ROLE_LABEL: Record<string, string> = {
   ADMIN: 'Quản trị viên',
   MANAGER: 'Quản lý',
   TECHNICIAN: 'Kỹ thuật viên',
+  GUEST: 'Khách',
 }
 
 const ROLE_COLOR: Record<string, string> = {
   ADMIN: '#ef4444',
   MANAGER: '#f97316',
   TECHNICIAN: '#3b82f6',
+  GUEST: '#8b5cf6',
 }
 
 function fmtDate(s: string | null) {
@@ -43,33 +45,42 @@ function StatusBadge({ user }: { user: ApiUser }) {
 // ─── Add User Dialog ───────────────────────────────────────────────────────
 
 function AddUserDialog({ open, onClose, onSaved }: { open: boolean; onClose: () => void; onSaved: () => void }) {
-  const [form, setForm] = useState({ email: '', role: 'TECHNICIAN', displayName: '' })
+  const [form, setForm] = useState({ email: '', role: 'TECHNICIAN', displayName: '', password: '' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm(p => ({ ...p, [k]: e.target.value }))
 
+  const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setForm(p => ({ ...p, role: e.target.value, password: '' }))
+  }
+
   async function save() {
     setError('')
     if (!form.email.trim()) {
       setError('Vui lòng nhập email'); return
     }
-    if (!form.email.toLowerCase().endsWith('@nctu.edu.vn')) {
-      setError('Chỉ chấp nhận email @nctu.edu.vn'); return
+    if (form.role !== 'GUEST' && !form.email.toLowerCase().endsWith('@nctu.edu.vn')) {
+      setError('Chỉ chấp nhận email @nctu.edu.vn cho role này'); return
+    }
+    if (form.role === 'GUEST' && !form.password.trim()) {
+      setError('Vui lòng nhập mật khẩu cho tài khoản khách'); return
     }
     setSaving(true)
     try {
+      const body: Record<string, string> = { email: form.email, role: form.role, displayName: form.displayName }
+      if (form.role === 'GUEST') body.password = form.password
       const res = await csrfFetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(body),
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error ?? 'Lỗi tạo tài khoản'); return }
       toast.success(`Đã thêm ${data.email}`)
       onSaved(); onClose()
-      setForm({ email: '', role: 'TECHNICIAN', displayName: '' })
+      setForm({ email: '', role: 'TECHNICIAN', displayName: '', password: '' })
     } catch { setError('Lỗi kết nối') }
     finally { setSaving(false) }
   }
@@ -81,25 +92,35 @@ function AddUserDialog({ open, onClose, onSaved }: { open: boolean; onClose: () 
       <div style={{ position: 'relative', background: 'var(--surface)', borderRadius: 16, width: 460, padding: 28, boxShadow: '0 20px 60px rgba(0,0,0,.3)', zIndex: 1 }}>
         <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 4 }}>Thêm tài khoản</div>
         <div style={{ fontSize: 13, color: 'var(--text-faint)', marginBottom: 20 }}>
-          Người dùng đăng nhập bằng Google với email <strong>@nctu.edu.vn</strong>.
+          {form.role === 'GUEST'
+            ? 'Tài khoản Khách đăng nhập bằng tên đăng nhập + mật khẩu.'
+            : <>Người dùng đăng nhập bằng Google với email <strong>@nctu.edu.vn</strong>.</>}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Vai trò *</label>
+            <select value={form.role} onChange={handleRoleChange} className="field" style={{ padding: '9px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface-2)', color: 'var(--text)', fontSize: 13 }}>
+              <option value="TECHNICIAN">Kỹ thuật viên</option>
+              <option value="MANAGER">Quản lý</option>
+              <option value="ADMIN">Quản trị viên</option>
+              <option value="GUEST">Khách</option>
+            </select>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Email *</label>
-            <div className="field"><input type="email" value={form.email} onChange={set('email')} placeholder="nguyen.van.a@nctu.edu.vn" /></div>
+            <div className="field"><input type="email" value={form.email} onChange={set('email')} placeholder={form.role === 'GUEST' ? 'nguyen@gmail.com' : 'nguyen.van.a@nctu.edu.vn'} /></div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Tên hiển thị</label>
             <div className="field"><input type="text" value={form.displayName} onChange={set('displayName')} placeholder="Nguyễn Văn A (để trống = dùng tên email)" /></div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Vai trò *</label>
-            <select value={form.role} onChange={set('role')} className="field" style={{ padding: '9px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface-2)', color: 'var(--text)', fontSize: 13 }}>
-              <option value="TECHNICIAN">Kỹ thuật viên</option>
-              <option value="MANAGER">Quản lý</option>
-              <option value="ADMIN">Quản trị viên</option>
-            </select>
-          </div>
+          {form.role === 'GUEST' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Mật khẩu tạm *</label>
+              <div className="field"><input type="password" value={form.password} onChange={set('password')} placeholder="Tối thiểu 10 ký tự" /></div>
+              <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>Giao mật khẩu này cho khách qua kênh bảo mật.</div>
+            </div>
+          )}
         </div>
         {error && <div style={{ marginTop: 14, fontSize: 13, color: '#dc2626', padding: '8px 12px', background: '#fee2e2', borderRadius: 8 }}>{error}</div>}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 22 }}>
@@ -178,6 +199,7 @@ function EditUserDialog({ user, onClose, onSaved }: { user: ApiUser | null; onCl
   }
 
   const isLocked = user.lockedUntil && new Date(user.lockedUntil) > new Date()
+  const isGuest = user.role === 'GUEST'
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -189,12 +211,23 @@ function EditUserDialog({ user, onClose, onSaved }: { user: ApiUser | null; onCl
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Vai trò</label>
-            <select value={role} onChange={e => setRole(e.target.value)} className="field" style={{ padding: '9px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface-2)', color: 'var(--text)', fontSize: 13 }}>
+            <select
+              value={role}
+              onChange={e => setRole(e.target.value)}
+              disabled={isGuest}
+              className="field"
+              style={{ padding: '9px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface-2)', color: 'var(--text)', fontSize: 13, opacity: isGuest ? 0.6 : 1 }}
+            >
               <option value="TECHNICIAN">Kỹ thuật viên</option>
               <option value="MANAGER">Quản lý</option>
               <option value="ADMIN">Quản trị viên</option>
             </select>
-            {role !== user.role && (
+            {isGuest && (
+              <div style={{ fontSize: 12, color: 'var(--text-faint)' }}>
+                Tài khoản Khách không thể đổi role. Xóa và tạo lại nếu cần.
+              </div>
+            )}
+            {!isGuest && role !== user.role && (
               <div style={{ fontSize: 12, color: '#d97706' }}>Thay đổi vai trò sẽ vô hiệu hóa phiên đăng nhập hiện tại của người dùng.</div>
             )}
           </div>
@@ -219,7 +252,7 @@ function EditUserDialog({ user, onClose, onSaved }: { user: ApiUser | null; onCl
         {error && <div style={{ marginTop: 14, fontSize: 13, color: '#dc2626', padding: '8px 12px', background: '#fee2e2', borderRadius: 8 }}>{error}</div>}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 22 }}>
           <button className="btn btn-outline" onClick={onClose}>Hủy</button>
-          <button className="btn btn-primary" onClick={save} disabled={saving}>
+          <button className="btn btn-primary" onClick={save} disabled={saving || isGuest}>
             {saving ? <><Loader2 size={14} style={{ animation: 'spin .7s linear infinite' }} /> Đang lưu...</> : 'Lưu thay đổi'}
           </button>
         </div>

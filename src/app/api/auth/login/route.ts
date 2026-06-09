@@ -29,20 +29,22 @@ export async function POST(req: NextRequest) {
     })
   }
 
-  let body: { email?: string; password?: string }
+  let body: { identifier?: string; email?: string; password?: string }
   try {
     body = await req.json()
   } catch {
     return Response.json({ error: 'Body không hợp lệ' }, { status: 400 })
   }
 
-  const { email, password } = body
-  if (!email || !password) {
-    return Response.json({ error: 'Email và mật khẩu là bắt buộc' }, { status: 400 })
+  const { identifier, email, password } = body
+  const input = (identifier ?? email ?? '').trim().toLowerCase()
+
+  if (!input || !password) {
+    return Response.json({ error: 'Tên đăng nhập và mật khẩu là bắt buộc' }, { status: 400 })
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email: email.toLowerCase().trim() },
+  const user = await prisma.user.findFirst({
+    where: input.includes('@') ? { email: input } : { username: input },
     select: {
       id: true, username: true, email: true, passwordHash: true,
       role: true, isActive: true, lockedUntil: true, loginAttempts: true, tokenVersion: true,
@@ -50,7 +52,7 @@ export async function POST(req: NextRequest) {
     },
   })
 
-  // Trả lỗi chung — không để lộ email có tồn tại hay không
+  // Trả lỗi chung — không để lộ tài khoản có tồn tại hay không
   if (!user) {
     return Response.json({ error: 'Email hoặc mật khẩu không đúng' }, { status: 401 })
   }

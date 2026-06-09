@@ -8,7 +8,7 @@ export async function PATCH(
 ) {
   if (!requireCsrf(req)) return Response.json({ error: 'CSRF token không hợp lệ' }, { status: 403 })
 
-  const auth = await requireRole(req, 'ADMIN', 'MANAGER', 'TECHNICIAN')
+  const auth = await requireRole(req, 'ADMIN', 'MANAGER', 'TECHNICIAN', 'GUEST')
   if (!auth) return Response.json({ error: 'Không có quyền truy cập' }, { status: 403 })
 
   const { id: idStr } = await params

@@ -9,7 +9,7 @@ import type { NextRequest } from 'next/server'
 export async function PUT(req: NextRequest) {
   if (!requireCsrf(req)) return Response.json({ error: 'CSRF token không hợp lệ' }, { status: 403 })
 
-  const auth = await requireRole(req, 'ADMIN', 'MANAGER', 'TECHNICIAN')
+  const auth = await requireRole(req, 'ADMIN', 'MANAGER', 'TECHNICIAN', 'GUEST')
   if (!auth) return Response.json({ error: 'Chưa đăng nhập' }, { status: 401 })
 
   // Rate limit: 10 lần/giờ/user

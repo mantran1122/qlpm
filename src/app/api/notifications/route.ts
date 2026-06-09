@@ -6,7 +6,7 @@ import { sendNotification } from '@/lib/node/notification'
 import type { NextRequest } from 'next/server'
 
 export async function GET(req: NextRequest) {
-  const auth = await requireRole(req, 'ADMIN', 'MANAGER', 'TECHNICIAN')
+  const auth = await requireRole(req, 'ADMIN', 'MANAGER', 'TECHNICIAN', 'GUEST')
   if (!auth) return Response.json({ error: 'Không có quyền truy cập' }, { status: 403 })
 
   const { searchParams } = new URL(req.url)

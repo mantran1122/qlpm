@@ -1,11 +1,137 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { useFetch } from '@/lib/use-fetch'
 import { fmtDate } from '@/lib/app-data'
 import { Card, CardHead, Badge, Button } from '@/components/app/primitives'
 import { BarChart, DonutChart } from '@/components/app/charts'
 import { Icon } from '@/components/app/icons'
+
+// ── Guest Welcome ───────────────────────────────────────────────────────────
+const SPARKLES = [
+  { top: '8%',  left: '6%',   size: 20, dur: 2.4, delay: 0.0, color: '#fbbf24' },
+  { top: '15%', left: '88%',  size: 14, dur: 1.9, delay: 0.4, color: '#a78bfa' },
+  { top: '4%',  left: '52%',  size: 26, dur: 2.7, delay: 0.7, color: '#60a5fa' },
+  { top: '72%', left: '4%',   size: 18, dur: 2.1, delay: 0.2, color: '#34d399' },
+  { top: '80%', left: '91%',  size: 16, dur: 2.3, delay: 1.0, color: '#f472b6' },
+  { top: '50%', left: '96%',  size: 12, dur: 1.8, delay: 0.6, color: '#fbbf24' },
+  { top: '60%', left: '2%',   size: 22, dur: 2.5, delay: 0.9, color: '#60a5fa' },
+  { top: '30%', left: '93%',  size: 10, dur: 2.0, delay: 1.3, color: '#a78bfa' },
+  { top: '88%', left: '45%',  size: 14, dur: 2.2, delay: 0.3, color: '#34d399' },
+  { top: '22%', left: '2%',   size: 10, dur: 1.7, delay: 1.5, color: '#f472b6' },
+]
+
+function StarIcon({ size, color }: { size: number; color: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+      <path d="M12 2 L13.5 9.5 L21 12 L13.5 14.5 L12 22 L10.5 14.5 L3 12 L10.5 9.5 Z" />
+    </svg>
+  )
+}
+
+function GuestWelcome({ displayName }: { displayName: string }) {
+  return (
+    <>
+      <style>{`
+        @keyframes guestSparkle {
+          0%,100% { opacity:0; transform:scale(0) rotate(0deg); }
+          40%,60% { opacity:1; transform:scale(1) rotate(180deg); }
+        }
+        @keyframes guestFloat {
+          0%,100% { transform:translateY(0px); }
+          50%      { transform:translateY(-14px); }
+        }
+        @keyframes guestShimmer {
+          0%   { background-position: -300% center; }
+          100% { background-position:  300% center; }
+        }
+        @keyframes guestFadeIn {
+          from { opacity:0; transform:translateY(20px); }
+          to   { opacity:1; transform:translateY(0); }
+        }
+      `}</style>
+
+      <div style={{
+        position: 'relative', overflow: 'hidden',
+        borderRadius: 24,
+        background: 'linear-gradient(135deg, #1e3a5f 0%, #2d1b69 50%, #1e3a5f 100%)',
+        padding: '60px 32px 56px',
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        animation: 'guestFadeIn .6s ease both',
+        boxShadow: '0 20px 60px rgba(0,0,0,.25)',
+      }}>
+        {/* Sparkle stars */}
+        {SPARKLES.map((s, i) => (
+          <span key={i} style={{
+            position: 'absolute',
+            top: s.top, left: s.left,
+            animation: `guestSparkle ${s.dur}s ${s.delay}s ease-in-out infinite`,
+            pointerEvents: 'none',
+          }}>
+            <StarIcon size={s.size} color={s.color} />
+          </span>
+        ))}
+
+        {/* Logo */}
+        <div style={{ animation: 'guestFloat 3s ease-in-out infinite', marginBottom: 28 }}>
+          <Image
+            src="/logo_don.png"
+            alt="ĐH Nam Cần Thơ"
+            width={90}
+            height={90}
+            style={{ objectFit: 'contain', filter: 'drop-shadow(0 4px 16px rgba(255,255,255,.25))' }}
+          />
+        </div>
+
+        {/* Greeting */}
+        <h2 style={{
+          margin: 0, fontSize: 32, fontWeight: 800, textAlign: 'center',
+          background: 'linear-gradient(90deg, #fbbf24, #f9fafb, #a78bfa, #60a5fa, #fbbf24)',
+          backgroundSize: '300% auto',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text',
+          animation: 'guestShimmer 4s linear infinite',
+          letterSpacing: '-.02em',
+        }}>
+          Chào mừng {displayName}! ✨
+        </h2>
+
+        <p style={{
+          marginTop: 14, fontSize: 15, color: 'rgba(255,255,255,.75)',
+          textAlign: 'center', lineHeight: 1.7, maxWidth: 480,
+        }}>
+          Bạn đang truy cập <strong style={{ color: '#fff' }}>Hệ thống Quản lý Phòng Máy</strong><br />
+          Trường Đại học Nam Cần Thơ với tư cách <strong style={{ color: '#fbbf24' }}>Khách</strong>.
+        </p>
+
+        {/* Quick links */}
+        <div style={{
+          marginTop: 32, display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center',
+        }}>
+          {[
+            { label: '🖥️  Phòng Máy',      href: '/rooms' },
+            { label: '🔧  Lịch Sử Bảo Trì', href: '/maintenance-history' },
+            { label: '💿  Phần Mềm',         href: '/software' },
+          ].map(l => (
+            <a key={l.href} href={l.href} style={{
+              padding: '9px 20px', borderRadius: 99,
+              background: 'rgba(255,255,255,.12)',
+              border: '1px solid rgba(255,255,255,.2)',
+              color: '#fff', fontSize: 13, fontWeight: 600,
+              textDecoration: 'none',
+              backdropFilter: 'blur(8px)',
+              transition: 'background .15s',
+            }}>
+              {l.label}
+            </a>
+          ))}
+        </div>
+      </div>
+    </>
+  )
+}
 
 // ── Types ──────────────────────────────────────────────────────────────────
 interface KtvStats {
@@ -82,9 +208,9 @@ export default function KtvDashboardPage() {
 
   const { data: me } = useFetch<{ user: { userId: number; role: string } | null }>('/api/auth/me')
 
-  // Chỉ KTV mới được xem trang này (Admin truy cập qua /dashboard/ktv/[userId])
+  // ADMIN/MANAGER truy cập qua /dashboard/ktv/[userId], redirect ra ngoài
   useEffect(() => {
-    if (me && me.user && me.user.role !== 'TECHNICIAN') {
+    if (me && me.user && me.user.role !== 'TECHNICIAN' && me.user.role !== 'GUEST') {
       router.replace('/')
     }
   }, [me, router])
@@ -99,6 +225,12 @@ export default function KtvDashboardPage() {
   if (loading || !me?.user) {
     return <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-faint)' }}>Đang tải dữ liệu...</div>
   }
+
+  // GUEST thấy welcome card thay vì dashboard KTV
+  if (me.user.role === 'GUEST') {
+    return <GuestWelcome displayName={displayName} />
+  }
+
   if (error) {
     return <div style={{ padding: 60, textAlign: 'center', color: 'var(--err-tx)' }}>Lỗi tải dữ liệu: {error}</div>
   }
