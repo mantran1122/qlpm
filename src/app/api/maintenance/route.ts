@@ -160,10 +160,12 @@ async function checkLowStockAndNotify() {
     }),
   ])
 
-  const fields = Object.keys(SUPPLY_LABELS_MAP) as (keyof typeof SUPPLY_LABELS_MAP)[]
+  const fields = Object.keys(SUPPLY_LABELS_MAP)
+  const intakeSum = intake._sum as Record<string, number | null>
+  const usedSum = used._sum as Record<string, number | null>
   for (const field of fields) {
-    const i = (intake._sum[field] as number) ?? 0
-    const u = (used._sum[field] as number) ?? 0
+    const i = intakeSum[field] ?? 0
+    const u = usedSum[field] ?? 0
     const balance = i - u
     if (balance <= 2) {
       await sendNotification({
