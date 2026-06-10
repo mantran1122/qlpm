@@ -1,7 +1,8 @@
 # UPGRADE_PLAN.md — Kế hoạch Nâng cấp Phong May Manager
 
-> **Trạng thái:** ✅ HOÀN CHỈNH — tất cả câu hỏi đã được xác nhận, sẵn sàng code
-> **Ngày tạo:** 2026-06-10  |  **Ngày cập nhật:** 2026-06-10 (lần 2)
+> **Trạng thái kế hoạch:** ✅ HOÀN CHỈNH — tất cả câu hỏi đã được xác nhận
+> **Tiến độ implement:** Phase A ✅ · Phase B ✅ · Phase C ⏳ · Phase D ⏳ · Phase E ⏳
+> **Ngày tạo:** 2026-06-10  |  **Ngày cập nhật:** 2026-06-10 (lần 3)
 > **Người soạn:** Claude Code (sau khi đọc toàn bộ codebase + xác nhận 10 câu hỏi)
 
 ---
@@ -627,22 +628,22 @@ npx prisma migrate status                        # kiểm tra
 ## 9. Thứ tự triển khai
 
 ```
-Phase A — Nền tảng pre-repair (tuần 1, đầu tiên)
-  ├── A1. Migration 1: device_pre_repair_status
-  ├── A2. API: POST/GET /api/pre-repair-status
-  ├── A3. API: POST /api/upload/repair-image
-  └── A4. UI: /pre-repair (form + danh sách)
+✅ Phase A — Nền tảng pre-repair (DONE — commit 56ce3cf)
+  ├── ✅ A1. Migration 1: device_pre_repair_status
+  ├── ✅ A2. API: POST/GET /api/pre-repair-status
+  ├── ✅ A3. API: POST /api/upload/repair-image
+  └── ✅ A4. UI: /pre-repair (form + danh sách)
 
-Phase B — Thu hồi (tuần 1-2, sau A)
-  ├── B1. Migration 2: recall_records (có complexity field) + recall_alerts
-  ├── B2. Migration 4: add recall_record_id to maintenance_logs
-  ├── B3. Migration 5: add user_id to technicians
-  ├── B4. API: CRUD /api/recalls + /api/recalls/alerts + /api/recalls/check-overdue
-  ├── B5. UI: /recall + /recall/[id]
-  ├── B6. Cron setup: crontab gọi check-overdue hàng ngày 08:00
-  └── B7. Notification: recall alert → ADMIN/MANAGER
+✅ Phase B — Thu hồi (DONE — commit a9950c9)
+  ├── ✅ B1. Migration 2: recall_records (có complexity field) + recall_alerts
+  ├── ✅ B2. Migration 4: add recall_record_id to maintenance_logs
+  ├── ✅ B3. Migration 5: add user_id to technicians
+  ├── ✅ B4. API: CRUD /api/recalls + /api/recalls/alerts + /api/recalls/check-overdue + /api/recalls/stats
+  ├── ✅ B5. UI: /recall + /recall/[id]
+  ├── ✅ B6. Cron setup: crontab.example + INTERNAL_CRON_KEY vào .env.example
+  └── ✅ B7. Notification: recall alert → ADMIN/MANAGER (qua check-overdue endpoint)
 
-Phase C — Ticker (tuần 2, độc lập với B)
+⏳ Phase C — Ticker (CHƯA BẮT ĐẦU)
   ├── C1. Migration 3: tickets + ticket_replies
   ├── C2. API: CRUD /api/tickets + /api/tickets/[id]/reply
   ├── C3. API: POST /api/upload/ticket-image
@@ -650,13 +651,13 @@ Phase C — Ticker (tuần 2, độc lập với B)
   ├── C5. Notification: ticket tạo → ADMIN/MANAGER; reply → GUEST/KTV
   └── C6. Shell: thêm menu + badge count
 
-Phase D — Báo cáo (tuần 3, cần A+B+C có dữ liệu)
+⏳ Phase D — Báo cáo (CHƯA BẮT ĐẦU)
   ├── D1. Mở rộng /api/report với type+period params
   ├── D2. Thêm exceljs dependency + /api/report/export
   ├── D3. UI: /reports với 4 tabs + date range filter + export button
   └── D4. (Optional) Migration 6: report_snapshots + cache logic
 
-Phase E — Kiểm thử & Hoàn thiện (tuần 3-4)
+⏳ Phase E — Kiểm thử & Hoàn thiện (CHƯA BẮT ĐẦU)
   ├── E1. Unit test: service pre-repair, recall, ticket, report
   ├── E2. Integration test: luồng chính từng hạng mục
   ├── E3. Regression: maintenance, notifications, rooms/machines, supplies
