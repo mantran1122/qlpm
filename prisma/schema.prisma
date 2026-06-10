@@ -25,9 +25,10 @@ model Room {
   diskSpec        String?          @db.VarChar(50)
   monitorSpec     String?          @db.VarChar(30)
   notes           String?          @db.Text
-  floor           Floor            @relation(fields: [floorId], references: [id])
-  machines        Machine[]
-  maintenanceLogs MaintenanceLog[]
+  floor             Floor            @relation(fields: [floorId], references: [id])
+  machines          Machine[]
+  maintenanceLogs   MaintenanceLog[]
+  preRepairStatuses DevicePreRepairStatus[]
 
   @@map("rooms")
 }
@@ -56,6 +57,7 @@ model Machine {
   updatedAt         DateTime  @updatedAt
   room              Room      @relation(fields: [roomId], references: [id])
   maintenanceLogs   MaintenanceLog[]
+  preRepairStatuses DevicePreRepairStatus[]
 
   @@unique([roomId, machineNo, isTeacher])
   @@map("machines")
@@ -97,6 +99,7 @@ model User {
   auditLogs              AuditLog[]
   createdMaintenanceLogs MaintenanceLog[]
   notifications          Notification[]
+  preRepairStatuses      DevicePreRepairStatus[]
 
   @@map("users")
 }
@@ -124,15 +127,16 @@ enum UserRole {
 }
 
 model Technician {
-  id              Int              @id @default(autoincrement())
-  name            String           @db.VarChar(80)
-  phone           String?          @db.VarChar(15)
-  department      String?          @db.VarChar(100)
-  notes           String?          @db.Text
-  isActive        Boolean          @default(true)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  maintenanceLogs MaintenanceLog[]
+  id                Int                    @id @default(autoincrement())
+  name              String                 @db.VarChar(80)
+  phone             String?                @db.VarChar(15)
+  department        String?                @db.VarChar(100)
+  notes             String?                @db.Text
+  isActive          Boolean                @default(true)
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  maintenanceLogs   MaintenanceLog[]
+  preRepairStatuses DevicePreRepairStatus[]
 
   @@map("technicians")
 }
@@ -249,4 +253,30 @@ model NotificationDebounce {
 
   @@index([expiresAt])
   @@map("notification_debounce")
+}
+
+// ── Phase A ──────────────────────────────────────────────────────────────────
+
+model DevicePreRepairStatus {
+  id           Int       @id @default(autoincrement())
+  machineId    Int
+  roomId       Int
+  machineNo    Int
+  description  String    @db.Text
+  reportedBy   String?   @db.VarChar(100)
+  reportedAt   DateTime
+  imageUrls    String?   @db.Text
+  technicianId Int?
+  createdById  Int
+  createdAt    DateTime  @default(now())
+
+  machine    Machine     @relation(fields: [machineId],    references: [id])
+  room       Room        @relation(fields: [roomId],       references: [id])
+  technician Technician? @relation(fields: [technicianId], references: [id])
+  createdBy  User        @relation(fields: [createdById],  references: [id])
+
+  @@index([machineId, createdAt])
+  @@index([roomId,    createdAt])
+  @@index([createdById])
+  @@map("device_pre_repair_status")
 }

@@ -52,7 +52,12 @@ const ICONS: Record<string, string | { e: [string, Record<string, unknown>][] }>
   pkgIn: 'M16 16l-4 4-4-4M12 20V10M20 6.5 12 2 4 6.5M4 6.5v8.4a2 2 0 0 0 1 1.7M20 6.5v8.4a2 2 0 0 1-1 1.7',
   inbox: { e: [['path',{d:'M22 12h-6l-2 3h-4l-2-3H2'}],['path',{d:'M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z'}]] },
   trash: { e: [['path',{d:'M3 6h18M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2'}]] },
-  folder: 'M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z',
+  folder:    'M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z',
+  camera:    { e: [['path',{d:'M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z'}],['circle',{cx:12,cy:13,r:3}]] },
+  lock:      { e: [['rect',{x:3,y:11,width:18,height:11,rx:2}],['path',{d:'M7 11V7a5 5 0 0 1 10 0v4'}]] },
+  ticket:    { e: [['path',{d:'M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z'}],['path',{d:'M13 5v2M13 17v2M13 11v2'}]] },
+  recall:    { e: [['path',{d:'M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8'}],['path',{d:'M3 3v5h5'}],['path',{d:'M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16'}],['path',{d:'M16 21h5v-5'}]] },
+  report:    { e: [['path',{d:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'}],['path',{d:'M14 2v6h6M16 13H8M16 17H8M10 9H8'}]] },
 }
 
 interface IconProps {

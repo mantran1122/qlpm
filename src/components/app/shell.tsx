@@ -34,15 +34,19 @@ function Avatar({ src, initials, size = 38, radius = 10 }: { src?: string | null
 }
 
 const NAV = [
-  { key: 'dashboard',           href: '/',                      label: 'Dashboard',           icon: 'dashboard',  roles: ['ADMIN','MANAGER'] },
-  { key: 'dashboard-ktv',       href: '/dashboard/ktv',         label: 'Dashboard',           icon: 'dashboard',  roles: ['TECHNICIAN','GUEST'] },
-  { key: 'rooms',               href: '/rooms',                  label: 'Phòng Máy',           icon: 'rooms',      roles: ['ADMIN','MANAGER','TECHNICIAN','GUEST'] },
-  { key: 'maintenance',         href: '/maintenance',            label: 'Nhật Ký Kỹ Thuật',   icon: 'wrench',     roles: ['ADMIN','MANAGER'] },
-  { key: 'maintenance-history', href: '/maintenance-history',   label: 'Lịch Sử Bảo Trì',    icon: 'wrench',     roles: ['TECHNICIAN','GUEST'] },
-  { key: 'software',            href: '/software',               label: 'Phần Mềm - Phần Cứng', icon: 'software', roles: ['ADMIN','MANAGER','TECHNICIAN','GUEST'] },
-  { key: 'supplies',            href: '/supplies',               label: 'Vật Tư Tồn Kho',     icon: 'supplies',   roles: ['ADMIN','MANAGER'] },
-  { key: 'statistics',          href: '/stats',                  label: 'Thống Kê',            icon: 'stats',      roles: ['ADMIN','MANAGER'] },
-  { key: 'technicians',         href: '/technicians',            label: 'Kỹ Thuật Viên',       icon: 'users',      roles: ['ADMIN','MANAGER'] },
+  { key: 'dashboard',           href: '/',                      label: 'Dashboard',              icon: 'dashboard', roles: ['ADMIN','MANAGER'] },
+  { key: 'dashboard-ktv',       href: '/dashboard/ktv',         label: 'Dashboard',              icon: 'dashboard', roles: ['TECHNICIAN','GUEST'] },
+  { key: 'rooms',               href: '/rooms',                 label: 'Phòng Máy',              icon: 'rooms',     roles: ['ADMIN','MANAGER','TECHNICIAN','GUEST'] },
+  { key: 'maintenance',         href: '/maintenance',           label: 'Nhật Ký Kỹ Thuật',      icon: 'wrench',    roles: ['ADMIN','MANAGER'] },
+  { key: 'maintenance-history', href: '/maintenance-history',   label: 'Lịch Sử Bảo Trì',       icon: 'wrench',    roles: ['TECHNICIAN'] },
+  { key: 'pre-repair',          href: '/pre-repair',            label: 'Tình Trạng Trước Sửa',  icon: 'camera',    roles: ['ADMIN','MANAGER','TECHNICIAN'] },
+  { key: 'recall',              href: '/recall',                label: 'Thu Hồi – Sửa Chữa',    icon: 'recall',    roles: ['ADMIN','MANAGER','TECHNICIAN'] },
+  { key: 'tickets',             href: '/tickets',               label: 'Ticker Báo Lỗi',        icon: 'ticket',    roles: ['ADMIN','MANAGER','TECHNICIAN','GUEST'] },
+  { key: 'software',            href: '/software',              label: 'Phần Mềm - Phần Cứng',  icon: 'software',  roles: ['ADMIN','MANAGER','TECHNICIAN','GUEST'] },
+  { key: 'supplies',            href: '/supplies',              label: 'Vật Tư Tồn Kho',        icon: 'supplies',  roles: ['ADMIN','MANAGER'] },
+  { key: 'statistics',          href: '/stats',                 label: 'Thống Kê',               icon: 'stats',     roles: ['ADMIN','MANAGER'] },
+  { key: 'reports',             href: '/reports',               label: 'Báo Cáo',                icon: 'report',    roles: ['ADMIN','MANAGER'] },
+  { key: 'technicians',         href: '/technicians',           label: 'Kỹ Thuật Viên',          icon: 'users',     roles: ['ADMIN','MANAGER'] },
 ]
 
 const ROLE_LABELS: Record<import('@/lib/edge/jwt').UserRole, string> = {
@@ -68,11 +72,12 @@ function Sidebar({ open, onClose, collapsed, onToggle, user, onProfile }: {
   const pathname = usePathname()
   const router = useRouter()
   const isActive = (key: string) => {
-    if (key === 'dashboard') return pathname === '/'
+    if (key === 'dashboard')     return pathname === '/'
     if (key === 'dashboard-ktv') return pathname === '/dashboard/ktv' || pathname.startsWith('/dashboard/ktv/')
-    if (key === 'rooms') return pathname.startsWith('/rooms')
-    if (key === 'technicians') return pathname.startsWith('/technicians')
-    if (key === 'maintenance-history') return pathname === '/maintenance-history'
+    if (key === 'rooms')         return pathname.startsWith('/rooms')
+    if (key === 'technicians')   return pathname.startsWith('/technicians')
+    if (key === 'recall')        return pathname === '/recall' || pathname.startsWith('/recall/')
+    if (key === 'tickets')       return pathname === '/tickets' || pathname.startsWith('/tickets/')
     return pathname === '/' + key
   }
 
@@ -258,9 +263,14 @@ function useBreadcrumb() {
     '/rooms':                ['Quản lý',     'Phòng Máy'],
     '/maintenance':          ['Vận hành',    'Nhật Ký Kỹ Thuật'],
     '/maintenance-history':  ['Vận hành',    'Lịch Sử Bảo Trì'],
+    '/pre-repair':           ['Vận hành',    'Tình Trạng Trước Sửa'],
+    '/recall':               ['Vận hành',    'Thu Hồi – Sửa Chữa'],
+    '/tickets':              ['Hỗ trợ',      'Ticker Báo Lỗi'],
+    '/tickets/admin':        ['Hỗ trợ',      'Quản Lý Ticker'],
     '/software':             ['Vận hành',    'Phần Mềm'],
     '/supplies':             ['Kho',         'Vật Tư'],
     '/stats':                ['Báo cáo',     'Thống Kê'],
+    '/reports':              ['Báo cáo',     'Báo Cáo Đa Mẫu'],
     '/technicians':          ['Nhân sự',     'Kỹ Thuật Viên'],
     '/settings':             ['Hệ thống',    'Cài Đặt'],
   }
