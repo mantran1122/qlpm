@@ -1,7 +1,7 @@
 # UPGRADE_PLAN.md — Kế hoạch Nâng cấp Phong May Manager
 
 > **Trạng thái kế hoạch:** ✅ HOÀN CHỈNH — tất cả câu hỏi đã được xác nhận
-> **Tiến độ implement:** Phase A ✅ · Phase B ✅ · Phase C ⏳ · Phase D ⏳ · Phase E ⏳
+> **Tiến độ implement:** Phase A ✅ · Phase B ✅ · Phase C ✅ · Phase D ✅ · Phase E ⏳
 > **Ngày tạo:** 2026-06-10  |  **Ngày cập nhật:** 2026-06-10 (lần 3)
 > **Người soạn:** Claude Code (sau khi đọc toàn bộ codebase + xác nhận 10 câu hỏi)
 
@@ -643,19 +643,19 @@ npx prisma migrate status                        # kiểm tra
   ├── ✅ B6. Cron setup: crontab.example + INTERNAL_CRON_KEY vào .env.example
   └── ✅ B7. Notification: recall alert → ADMIN/MANAGER (qua check-overdue endpoint)
 
-⏳ Phase C — Ticker (CHƯA BẮT ĐẦU)
-  ├── C1. Migration 3: tickets + ticket_replies
-  ├── C2. API: CRUD /api/tickets + /api/tickets/[id]/reply
-  ├── C3. API: POST /api/upload/ticket-image
-  ├── C4. UI: /tickets (guest+ktv view) + /tickets/admin + /tickets/[id]
-  ├── C5. Notification: ticket tạo → ADMIN/MANAGER; reply → GUEST/KTV
-  └── C6. Shell: thêm menu + badge count
+✅ Phase C — Ticker (DONE — 2026-06-10)
+  ├── ✅ C1. Migration 3: tickets + ticket_replies (có guestReadAt)
+  ├── ✅ C2. API: CRUD /api/tickets + /api/tickets/[id]/reply + /api/tickets/unresolved-count
+  ├── ✅ C3. API: POST /api/upload/ticket-image + GET /api/ticket-image/[filename]
+  ├── ✅ C4. UI: /tickets (guest+ktv) + /tickets/admin + /tickets/[id]
+  ├── ✅ C5. Notification: ticket tạo → ADMIN/MANAGER (+ email nếu urgent); reply → người tạo + KTV được gán
+  └── ✅ C6. Shell: badge PENDING count (ADMIN/MGR) + badge unread reply (GUEST), refresh 60s
 
-⏳ Phase D — Báo cáo (CHƯA BẮT ĐẦU)
-  ├── D1. Mở rộng /api/report với type+period params
-  ├── D2. Thêm exceljs dependency + /api/report/export
-  ├── D3. UI: /reports với 4 tabs + date range filter + export button
-  └── D4. (Optional) Migration 6: report_snapshots + cache logic
+✅ Phase D — Báo cáo (DONE — 2026-06-10)
+  ├── ✅ D1. Mở rộng /api/report với type+period params (machines/supply/parts-usage/recall-kpi)
+  ├── ✅ D2. Thêm exceljs dependency + /api/report/export (Excel multi-sheet)
+  ├── ✅ D3. UI: /reports với 4 tabs + date range filter + export button
+  └── ⏳ D4. (Optional) Migration 6: report_snapshots + cache logic — bỏ qua
 
 ⏳ Phase E — Kiểm thử & Hoàn thiện (CHƯA BẮT ĐẦU)
   ├── E1. Unit test: service pre-repair, recall, ticket, report
