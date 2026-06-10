@@ -65,9 +65,9 @@ function getInitials(name: string): string {
   return name.trim().slice(0, 2).toUpperCase()
 }
 
-function Sidebar({ open, onClose, collapsed, onToggle, user, onProfile }: {
+function Sidebar({ open, onClose, collapsed, onToggle, user, onProfile, ticketBadge }: {
   open: boolean; onClose: () => void; collapsed: boolean; onToggle: () => void
-  user: UserState | null; onProfile: () => void
+  user: UserState | null; onProfile: () => void; ticketBadge: number
 }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -135,6 +135,7 @@ function Sidebar({ open, onClose, collapsed, onToggle, user, onProfile }: {
           <nav style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {NAV.filter(n => n.roles.includes(user?.role ?? 'TECHNICIAN')).map(n => {
               const active = isActive(n.key)
+              const badge  = n.key === 'tickets' && ticketBadge > 0 ? ticketBadge : 0
               return (
                 <button key={n.key} onClick={() => router.push(n.href)} title={collapsed ? n.label : undefined} style={{
                   display: 'flex', alignItems: 'center',
@@ -147,9 +148,23 @@ function Sidebar({ open, onClose, collapsed, onToggle, user, onProfile }: {
                   background: active ? 'var(--sidebar-active)' : 'transparent',
                   color: active ? '#fff' : 'var(--sidebar-text)',
                   boxShadow: active ? '0 4px 12px -4px rgba(0,0,0,.4)' : 'none',
+                  position: 'relative',
            }} className="nav-btn">
                   <Icon name={n.icon} size={19} stroke={active ? 2.3 : 2} />
                   {!collapsed && n.label}
+                  {badge > 0 && (
+                    <span style={{
+                      marginLeft: 'auto', minWidth: 18, height: 18, padding: '0 5px',
+                      borderRadius: 99, background: 'var(--err)', color: '#fff',
+                      fontSize: 10.5, fontWeight: 700, display: 'grid', placeItems: 'center',
+                    }}>{badge > 99 ? '99+' : badge}</span>
+                  )}
+                  {badge > 0 && collapsed && (
+                    <span style={{
+                      position: 'absolute', top: 6, right: 6, width: 8, height: 8,
+                      borderRadius: 99, background: 'var(--err)', border: '2px solid var(--sidebar)',
+                    }} />
+                  )}
                 </button>
               )
             })}
@@ -301,6 +316,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState('light')
   const [user, setUser] = useState<UserState | null>(null)
   const [profileOpen, setProfileOpen] = useState(false)
+  const [ticketBadge, setTicketBadge] = useState(0)
   const breadcrumb = useBreadcrumb()
 
   useEffect(() => {
@@ -327,6 +343,34 @@ export function Shell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('profile-updated', refreshUser)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Fetch ticket badge mỗi 60 giây
+  useEffect(() => {
+    const fetchBadge = () => {
+      const role = (user as (UserState & { role?: string }) | null)?.role
+      if (!role) return
+      if (role === 'ADMIN' || role === 'MANAGER') {
+        fetch('/api/tickets/unresolved-count')
+          .then(r => r.ok ? r.json() : { count: 0 })
+          .then((d: { count: number }) => setTicketBadge(d.count ?? 0))
+          .catch(() => {})
+      } else if (role === 'GUEST') {
+        fetch('/api/tickets?limit=20&page=1')
+          .then(r => r.ok ? r.json() : null)
+          .then((d: { data: { hasUnreadReply?: boolean }[] } | null) => {
+            if (!d) return
+            const n = d.data.filter(t => t.hasUnreadReply).length
+            setTicketBadge(n)
+          })
+          .catch(() => {})
+      } else {
+        setTicketBadge(0)
+      }
+    }
+    fetchBadge()
+    const timer = setInterval(fetchBadge, 60000)
+    return () => clearInterval(timer)
+  }, [user, pathname])
+
   const setTheme = (t: string) => {
     setThemeState(t)
     document.documentElement.classList.toggle('dark', t === 'dark')
@@ -341,7 +385,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
   }
 
   const handleProfileSaved = () => {
-    // Refresh user data after profile update
     fetch('/api/auth/profile')
       .then(r => r.ok ? r.json() : null)
       .then((data: UserState | null) => { if (data) setUser(data) })
@@ -353,7 +396,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
       <Suspense fallback={null}><LoginSuccessToast /></Suspense>
-      <Sidebar open={open} onClose={() => setOpen(false)} collapsed={collapsed} onToggle={toggleCollapsed} user={user} onProfile={() => setProfileOpen(true)} />
+      <Sidebar open={open} onClose={() => setOpen(false)} collapsed={collapsed} onToggle={toggleCollapsed} user={user} onProfile={() => setProfileOpen(true)} ticketBadge={ticketBadge} />
       <div className="main-area" style={{ flex: 1, minWidth: 0, marginLeft: sbWidth, display: 'flex', flexDirection: 'column', transition: 'margin-left .25s cubic-bezier(.3,.9,.3,1)' }}>
         <Topbar breadcrumb={breadcrumb} onMenu={() => setOpen(true)} theme={theme} setTheme={setTheme} user={user} onProfile={() => setProfileOpen(true)} />
         <main style={{ flex: 1, padding: 26, animation: 'pageIn .35s ease' }}>{children}</main>

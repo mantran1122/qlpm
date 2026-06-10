@@ -190,6 +190,7 @@ export default function LoginPage() {
               <h1 style={{
                 margin: 0, fontSize: 42, fontWeight: 700,
                 color: 'var(--text)', letterSpacing: '-.02em',
+                whiteSpace: 'nowrap',
               }}>
                 Quản Lý Phòng Máy
               </h1>

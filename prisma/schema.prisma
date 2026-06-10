@@ -30,6 +30,7 @@ model Room {
   maintenanceLogs   MaintenanceLog[]
   preRepairStatuses DevicePreRepairStatus[]
   recallRecords     RecallRecord[]
+  tickets           Ticket[]
 
   @@map("rooms")
 }
@@ -106,6 +107,8 @@ model User {
   recalledRecords        RecallRecord[]          @relation("RecalledBy")
   repairedRecords        RecallRecord[]          @relation("RepairedBy")
   recallAlertDismissals  RecallAlert[]
+  tickets                Ticket[]
+  ticketReplies          TicketReply[]
 
   @@map("users")
 }
@@ -147,6 +150,7 @@ model Technician {
   preRepairStatuses DevicePreRepairStatus[]
   recalledTechRecords  RecallRecord[]      @relation("RecalledByTech")
   repairedTechRecords  RecallRecord[]      @relation("RepairedByTech")
+  assignedTickets      Ticket[]
 
   @@map("technicians")
 }
@@ -349,6 +353,66 @@ model RecallRecord {
   @@index([repairedByTechnicianId])
   @@index([recallType, repairFinishedAt])
   @@map("recall_records")
+}
+
+// ── Phase C ──────────────────────────────────────────────────────────────────
+
+enum TicketStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum TicketSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model Ticket {
+  id            Int            @id @default(autoincrement())
+  roomId        Int?
+  machineNo     Int?
+  title         String         @db.VarChar(200)
+  description   String         @db.Text
+  severity      TicketSeverity @default(MEDIUM)
+  status        TicketStatus   @default(PENDING)
+  isUrgent      Boolean        @default(false)
+  urgentReason  String?        @db.Text
+  imageUrls     String?        @db.Text
+  createdById   Int
+  assignedToId  Int?
+  guestReadAt   DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  room          Room?          @relation(fields: [roomId],       references: [id])
+  createdBy     User           @relation(fields: [createdById],  references: [id])
+  assignedTo    Technician?    @relation(fields: [assignedToId], references: [id])
+  replies       TicketReply[]
+
+  @@index([createdById, status])
+  @@index([roomId, status])
+  @@index([status, isUrgent, createdAt])
+  @@map("tickets")
+}
+
+model TicketReply {
+  id            Int           @id @default(autoincrement())
+  ticketId      Int
+  content       String        @db.Text
+  statusChange  TicketStatus?
+  createdById   Int
+  createdAt     DateTime      @default(now())
+
+  ticket        Ticket        @relation(fields: [ticketId],    references: [id], onDelete: Cascade)
+  createdBy     User          @relation(fields: [createdById], references: [id])
+
+  @@index([ticketId, createdAt])
+  @@map("ticket_replies")
 }
 
 model RecallAlert {
