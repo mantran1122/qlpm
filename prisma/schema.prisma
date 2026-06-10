@@ -29,6 +29,7 @@ model Room {
   machines          Machine[]
   maintenanceLogs   MaintenanceLog[]
   preRepairStatuses DevicePreRepairStatus[]
+  recallRecords     RecallRecord[]
 
   @@map("rooms")
 }
@@ -58,6 +59,7 @@ model Machine {
   room              Room      @relation(fields: [roomId], references: [id])
   maintenanceLogs   MaintenanceLog[]
   preRepairStatuses DevicePreRepairStatus[]
+  recallRecords     RecallRecord[]
 
   @@unique([roomId, machineNo, isTeacher])
   @@map("machines")
@@ -100,6 +102,10 @@ model User {
   createdMaintenanceLogs MaintenanceLog[]
   notifications          Notification[]
   preRepairStatuses      DevicePreRepairStatus[]
+  technician             Technician?
+  recalledRecords        RecallRecord[]          @relation("RecalledBy")
+  repairedRecords        RecallRecord[]          @relation("RepairedBy")
+  recallAlertDismissals  RecallAlert[]
 
   @@map("users")
 }
@@ -133,10 +139,14 @@ model Technician {
   department        String?                @db.VarChar(100)
   notes             String?                @db.Text
   isActive          Boolean                @default(true)
+  userId            Int?                   @unique
   createdAt         DateTime               @default(now())
   updatedAt         DateTime               @updatedAt
+  user              User?                  @relation(fields: [userId], references: [id], onDelete: SetNull)
   maintenanceLogs   MaintenanceLog[]
   preRepairStatuses DevicePreRepairStatus[]
+  recalledTechRecords  RecallRecord[]      @relation("RecalledByTech")
+  repairedTechRecords  RecallRecord[]      @relation("RepairedByTech")
 
   @@map("technicians")
 }
@@ -180,15 +190,18 @@ model MaintenanceLog {
   hardwareErrorsAfter  Int         @default(0)
   technicianName       String?     @db.VarChar(50) @map("technician")
   technicianId         Int?
+  recallRecordId       Int?
   createdAt            DateTime    @default(now())
   room                 Room?       @relation(fields: [roomId], references: [id])
   machine              Machine?    @relation(fields: [machineId], references: [id])
   technician           Technician? @relation(fields: [technicianId], references: [id])
   createdBy            User?       @relation(fields: [createdById], references: [id])
+  recallRecord         RecallRecord? @relation(fields: [recallRecordId], references: [id], onDelete: SetNull)
 
   @@index([createdById])
   @@index([machineId])
   @@index([actionType])
+  @@index([recallRecordId])
   @@map("maintenance_logs")
 }
 
@@ -270,13 +283,86 @@ model DevicePreRepairStatus {
   createdById  Int
   createdAt    DateTime  @default(now())
 
-  machine    Machine     @relation(fields: [machineId],    references: [id])
-  room       Room        @relation(fields: [roomId],       references: [id])
-  technician Technician? @relation(fields: [technicianId], references: [id])
-  createdBy  User        @relation(fields: [createdById],  references: [id])
+  machine       Machine      @relation(fields: [machineId],    references: [id])
+  room          Room         @relation(fields: [roomId],       references: [id])
+  technician    Technician?  @relation(fields: [technicianId], references: [id])
+  createdBy     User         @relation(fields: [createdById],  references: [id])
+  recallRecords RecallRecord[]
 
   @@index([machineId, createdAt])
   @@index([roomId,    createdAt])
   @@index([createdById])
   @@map("device_pre_repair_status")
+}
+
+// ── Phase B ──────────────────────────────────────────────────────────────────
+
+enum RecallType {
+  RECALL_FOR_REPAIR
+  RECALL_STILL_USABLE
+  RETURN_AFTER_REPAIR
+}
+
+enum RecallComplexity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model RecallRecord {
+  id                      Int               @id @default(autoincrement())
+  machineId               Int
+  roomId                  Int
+  machineNo               Int
+  recallType              RecallType
+  complexity              RecallComplexity  @default(MEDIUM)
+
+  recalledById            Int
+  recalledByTechnicianId  Int?
+  recalledAt              DateTime
+
+  repairedById            Int?
+  repairedByTechnicianId  Int?
+  repairStartedAt         DateTime?
+  repairFinishedAt        DateTime?
+
+  preRepairStatusId       Int?
+  notes                   String?           @db.Text
+
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
+
+  machine                Machine                @relation(fields: [machineId],               references: [id])
+  room                   Room                   @relation(fields: [roomId],                  references: [id])
+  recalledBy             User                   @relation("RecalledBy",    fields: [recalledById],           references: [id])
+  recalledByTechnician   Technician?            @relation("RecalledByTech", fields: [recalledByTechnicianId], references: [id])
+  repairedBy             User?                  @relation("RepairedBy",    fields: [repairedById],            references: [id])
+  repairedByTechnician   Technician?            @relation("RepairedByTech", fields: [repairedByTechnicianId], references: [id])
+  preRepairStatus        DevicePreRepairStatus? @relation(fields: [preRepairStatusId],        references: [id])
+  maintenanceLogs        MaintenanceLog[]
+  alerts                 RecallAlert[]
+
+  @@index([machineId, createdAt])
+  @@index([recalledById])
+  @@index([repairedById])
+  @@index([recalledByTechnicianId])
+  @@index([repairedByTechnicianId])
+  @@index([recallType, repairFinishedAt])
+  @@map("recall_records")
+}
+
+model RecallAlert {
+  id              Int           @id @default(autoincrement())
+  recallRecordId  Int
+  daysOverdue     Int
+  sentAt          DateTime      @default(now())
+  dismissedAt     DateTime?
+  dismissedById   Int?
+
+  recallRecord    RecallRecord  @relation(fields: [recallRecordId], references: [id], onDelete: Cascade)
+  dismissedBy     User?         @relation(fields: [dismissedById],  references: [id])
+
+  @@index([recallRecordId, sentAt])
+  @@index([dismissedAt])
+  @@map("recall_alerts")
 }

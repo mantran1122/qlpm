@@ -1,0 +1,22 @@
+# Crontab example — Phase B: kiểm tra recall quá hạn hàng ngày lúc 08:00
+#
+# Cách cài đặt (Linux/macOS):
+#   crontab -e
+#   Dán dòng bên dưới, thay APP_URL và INTERNAL_CRON_KEY cho phù hợp
+#
+# Trên Windows: dùng Task Scheduler hoặc WSL crontab
+
+# Chạy hàng ngày lúc 08:00 sáng
+0 8 * * * curl -s -X POST https://YOUR_APP_URL/api/recalls/check-overdue \
+  -H "X-Internal-Key: YOUR_INTERNAL_CRON_KEY" \
+  >> /var/log/qlpm-cron.log 2>&1
+
+# Ví dụ với localhost (môi trường dev):
+# 0 8 * * * curl -s -X POST http://localhost:3000/api/recalls/check-overdue \
+#   -H "X-Internal-Key: YOUR_INTERNAL_CRON_KEY" \
+#   >> /tmp/qlpm-cron.log 2>&1
+
+# Ghi chú:
+# - INTERNAL_CRON_KEY phải khớp với giá trị trong .env
+# - Kết quả trả về JSON: { checked, alertsCreated, thresholdDays, runAt }
+# - Ngưỡng quá hạn mặc định: 3 ngày (cấu hình qua SystemSetting key: recall_overdue_days)
