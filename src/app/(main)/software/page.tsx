@@ -1,4 +1,6 @@
 'use client'
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useNav } from '@/lib/use-nav'
 import { useFetch } from '@/lib/use-fetch'
 import { STATUS_COLOR } from '@/lib/app-data'
@@ -17,9 +19,15 @@ interface ApiRoom {
 
 export default function SoftwarePage() {
   const go = useNav()
+  const router = useRouter()
+  const { data: me } = useFetch<{ user: { role: string } | null }>('/api/auth/me')
   const { data: rooms, loading, error } = useFetch<ApiRoom[]>('/api/rooms')
 
-  if (loading) return <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-faint)', fontSize: 14 }}>Đang tải dữ liệu...</div>
+  useEffect(() => {
+    if (me?.user?.role === 'GUEST') router.replace('/dashboard/ktv')
+  }, [me, router])
+
+  if (loading || !me) return <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-faint)', fontSize: 14 }}>Đang tải dữ liệu...</div>
   if (error)   return <div style={{ padding: 60, textAlign: 'center', color: 'var(--err-tx)', fontSize: 14 }}>Lỗi tải dữ liệu: {error}</div>
   if (!rooms)  return null
 

@@ -11,8 +11,6 @@ export async function GET(
   const auth = await requireRole(req, 'ADMIN', 'MANAGER', 'TECHNICIAN', 'GUEST')
   if (!auth) return Response.json({ error: 'Chưa đăng nhập' }, { status: 401 })
 
-  const isKtv = auth.role === 'TECHNICIAN' || auth.role === 'GUEST'
-
   const { roomCode } = await ctx.params
 
   const room = await prisma.room.findUnique({
@@ -20,9 +18,18 @@ export async function GET(
     include: {
       floor: true,
       machines: { orderBy: { machineNo: 'asc' } },
-      maintenanceLogs: isKtv ? false : {
+      maintenanceLogs: {
         orderBy: { maintenanceDate: 'desc' },
         take: 20,
+        include: {
+          createdBy: {
+            select: {
+              username: true,
+              email: true,
+              profile: { select: { displayName: true } },
+            },
+          },
+        },
       },
     },
   })
@@ -36,10 +43,19 @@ export async function GET(
     status: getMachineStatus(m as Record<string, unknown>),
   }))
 
+  const maintenanceLogs = room.maintenanceLogs.map(log => {
+    const resolved = log.technicianName
+      || log.createdBy?.profile?.displayName
+      || log.createdBy?.username
+      || log.createdBy?.email
+      || null
+    return { ...log, technicianName: resolved, createdBy: undefined }
+  })
+
   return Response.json({
     ...room,
     machines: machinesWithStatus,
-    maintenanceLogs: isKtv ? [] : room.maintenanceLogs,
+    maintenanceLogs,
   })
 }
 

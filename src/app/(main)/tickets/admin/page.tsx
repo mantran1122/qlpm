@@ -36,6 +36,14 @@ const STATUS_LABELS: Record<TicketStatus, string> = {
 const STATUS_TONES: Record<TicketStatus, string> = {
   PENDING: 'both', APPROVED: 'info', REJECTED: 'err', IN_PROGRESS: 'teacher', RESOLVED: 'good',
 }
+const STATUS_CHIP: Record<TicketStatus | '', { dot: string; activeBg: string; activeBorder: string; shadow: string }> = {
+  '':          { dot: 'var(--primary)',  activeBg: 'var(--primary)',  activeBorder: 'var(--primary)',  shadow: 'rgba(59,130,246,.35)' },
+  PENDING:     { dot: 'var(--both)',     activeBg: 'var(--both)',     activeBorder: 'var(--both)',     shadow: 'rgba(168,85,247,.35)' },
+  APPROVED:    { dot: 'var(--primary)',  activeBg: 'var(--primary)',  activeBorder: 'var(--primary)',  shadow: 'rgba(59,130,246,.35)' },
+  REJECTED:    { dot: 'var(--err)',      activeBg: 'var(--err)',      activeBorder: 'var(--err)',      shadow: 'rgba(239,68,68,.35)'  },
+  IN_PROGRESS: { dot: 'var(--teacher)', activeBg: 'var(--teacher)', activeBorder: 'var(--teacher)', shadow: 'rgba(6,182,212,.35)'  },
+  RESOLVED:    { dot: 'var(--good)',     activeBg: 'var(--good)',     activeBorder: 'var(--good)',     shadow: 'rgba(34,197,94,.35)'  },
+}
 const SEVERITY_LABELS: Record<TicketSeverity, string> = { LOW: 'Thấp', MEDIUM: 'Trung bình', HIGH: 'Cao', CRITICAL: 'Khẩn cấp' }
 const SEVERITY_TONES:  Record<TicketSeverity, string> = { LOW: 'good', MEDIUM: 'soft', HIGH: 'both', CRITICAL: 'err' }
 
@@ -160,13 +168,35 @@ export default function TicketsAdminPage() {
       </div>
 
       {/* Filter tabs */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
-        {(['', 'PENDING', 'APPROVED', 'REJECTED', 'IN_PROGRESS', 'RESOLVED'] as const).map(s => (
-          <button key={s} onClick={() => { setStatusFilter(s as TicketStatus | ''); setPage(1) }}
-            className={`filter-chip ${statusFilter === s ? 'active' : ''}`}>
-            {s === '' ? 'Tất cả' : STATUS_LABELS[s as TicketStatus]}
-          </button>
-        ))}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
+        {(['', 'PENDING', 'APPROVED', 'REJECTED', 'IN_PROGRESS', 'RESOLVED'] as const).map(s => {
+          const isActive = statusFilter === s
+          const chip = STATUS_CHIP[s]
+          return (
+            <button key={s}
+              onClick={() => { setStatusFilter(s as TicketStatus | ''); setPage(1) }}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 7,
+                fontFamily: 'var(--font)', fontSize: 15, fontWeight: isActive ? 600 : 500,
+                padding: '7px 16px', borderRadius: 99,
+                border: `1.5px solid ${isActive ? chip.activeBorder : 'var(--border-strong)'}`,
+                background: isActive ? chip.activeBg : 'var(--surface)',
+                color: isActive ? '#fff' : 'var(--text-muted)',
+                cursor: 'pointer', whiteSpace: 'nowrap' as const, userSelect: 'none' as const,
+                transition: 'all .18s ease',
+                boxShadow: isActive ? `0 3px 10px -2px ${chip.shadow}` : 'none',
+                lineHeight: 1,
+              }}
+            >
+              <span style={{
+                width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
+                background: isActive ? 'rgba(255,255,255,.7)' : chip.dot,
+                display: 'inline-block',
+              }} />
+              {s === '' ? 'Tất cả' : STATUS_LABELS[s as TicketStatus]}
+            </button>
+          )
+        })}
       </div>
 
       {loading ? (

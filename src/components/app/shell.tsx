@@ -42,7 +42,7 @@ const NAV = [
   { key: 'pre-repair',          href: '/pre-repair',            label: 'Tình Trạng Trước Sửa',  icon: 'camera',    roles: ['ADMIN','MANAGER','TECHNICIAN'] },
   { key: 'recall',              href: '/recall',                label: 'Thu Hồi – Sửa Chữa',    icon: 'recall',    roles: ['ADMIN','MANAGER','TECHNICIAN'] },
   { key: 'tickets',             href: '/tickets',               label: 'Ticker Báo Lỗi',        icon: 'ticket',    roles: ['ADMIN','MANAGER','TECHNICIAN','GUEST'] },
-  { key: 'software',            href: '/software',              label: 'Phần Mềm - Phần Cứng',  icon: 'software',  roles: ['ADMIN','MANAGER','TECHNICIAN','GUEST'] },
+  { key: 'software',            href: '/software',              label: 'Phần Mềm - Phần Cứng',  icon: 'software',  roles: ['ADMIN','MANAGER','TECHNICIAN'] },
   { key: 'supplies',            href: '/supplies',              label: 'Vật Tư Tồn Kho',        icon: 'supplies',  roles: ['ADMIN','MANAGER'] },
   { key: 'statistics',          href: '/stats',                 label: 'Thống Kê',               icon: 'stats',     roles: ['ADMIN','MANAGER'] },
   { key: 'reports',             href: '/reports',               label: 'Báo Cáo',                icon: 'report',    roles: ['ADMIN','MANAGER'] },
@@ -317,7 +317,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserState | null>(null)
   const [profileOpen, setProfileOpen] = useState(false)
   const [ticketBadge, setTicketBadge] = useState(0)
-  const breadcrumb = useBreadcrumb()
+  const rawBreadcrumb = useBreadcrumb()
+  const breadcrumb = (pathname === '/dashboard/ktv' && user?.role === 'GUEST')
+    ? ['Tổng quan', 'Dashboard']
+    : rawBreadcrumb
 
   useEffect(() => {
     const saved = localStorage.getItem('qlpm-theme') ?? 'light'

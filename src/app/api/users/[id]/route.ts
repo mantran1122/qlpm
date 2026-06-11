@@ -84,6 +84,23 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ id: string 
     })
   }
 
+  // Sync Technician record
+  const finalRole = (body.role ?? target.role) as string
+  const finalIsActive = body.isActive !== undefined ? body.isActive : target.isActive
+  if (finalRole === 'TECHNICIAN') {
+    const profile = body.displayName === undefined
+      ? await prisma.userProfile.findUnique({ where: { userId: targetId } })
+      : null
+    const techName = body.displayName?.trim() || profile?.displayName || target.username
+    await prisma.technician.upsert({
+      where: { userId: targetId },
+      create: { name: techName, userId: targetId, isActive: finalIsActive },
+      update: { isActive: finalIsActive, name: techName },
+    })
+  } else {
+    await prisma.technician.updateMany({ where: { userId: targetId }, data: { isActive: false } })
+  }
+
   if (Object.keys(auditDetails).length > 0) {
     await recordAudit({
       userId: auth.payload.userId,
@@ -124,6 +141,8 @@ export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: stri
     where: { id: targetId },
     data: { isActive: false, tokenVersion: { increment: 1 } },
   })
+
+  await prisma.technician.updateMany({ where: { userId: targetId }, data: { isActive: false } })
 
   await recordAudit({
     userId: auth.payload.userId,

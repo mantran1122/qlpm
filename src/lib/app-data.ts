@@ -164,5 +164,9 @@ export function supplyLevel(s: SupplyItem): { tone: string; label: string } {
   return { tone: 'err', label: 'Cần nhập thêm' }
 }
 export function fmtDate(iso: string): string {
-  const [y, m, d] = iso.split('-'); return `${d}/${m}/${y}`
+  const d = new Date(iso)
+  const y = d.getFullYear()
+  const mo = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${day}/${mo}/${y}`
 }

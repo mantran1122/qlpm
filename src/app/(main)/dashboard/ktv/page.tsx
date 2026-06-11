@@ -113,7 +113,6 @@ function GuestWelcome({ displayName }: { displayName: string }) {
           {[
             { label: '🖥️  Phòng Máy',      href: '/rooms' },
             { label: '🔧  Lịch Sử Bảo Trì', href: '/maintenance-history' },
-            { label: '💿  Phần Mềm',         href: '/software' },
           ].map(l => (
             <a key={l.href} href={l.href} style={{
               padding: '9px 20px', borderRadius: 99,
@@ -127,6 +126,34 @@ function GuestWelcome({ displayName }: { displayName: string }) {
               {l.label}
             </a>
           ))}
+        </div>
+
+        {/* Ticket suggestion */}
+        <div style={{
+          marginTop: 28,
+          padding: '14px 22px',
+          borderRadius: 14,
+          background: 'rgba(255,255,255,.08)',
+          border: '1px solid rgba(255,255,255,.15)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', justifyContent: 'center',
+          maxWidth: 520,
+        }}>
+          <span style={{ fontSize: 22 }}>🛠️</span>
+          <p style={{ margin: 0, fontSize: 13.5, color: 'rgba(255,255,255,.85)', lineHeight: 1.55, flex: 1, minWidth: 200, textAlign: 'left' }}>
+            Phát hiện sự cố hoặc máy hỏng?{' '}
+            <strong style={{ color: '#fff' }}>Gửi Ticker Báo Lỗi</strong>{' '}
+            — đội kỹ thuật sẽ xử lý ngay cho bạn.
+          </p>
+          <a href="/tickets" style={{
+            padding: '8px 18px', borderRadius: 99, flexShrink: 0,
+            background: '#fbbf24', color: '#1e1b00',
+            fontSize: 13, fontWeight: 700, textDecoration: 'none',
+            boxShadow: '0 4px 14px rgba(251,191,36,.35)',
+            transition: 'opacity .15s',
+          }}>
+            Gửi Ticker →
+          </a>
         </div>
       </div>
     </>
@@ -375,7 +402,7 @@ export default function KtvDashboardPage() {
                   return (
                     <tr key={log.id} className="trow">
                       <td style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                        {fmtDate(new Date(log.maintenanceDate).toISOString().slice(0, 10))}
+                        {fmtDate(log.maintenanceDate)}
                       </td>
                       <td>
                         {log.roomCode

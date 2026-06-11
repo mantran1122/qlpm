@@ -218,7 +218,7 @@ export default function AdminKtvDashboardPage({ params }: { params: Promise<{ us
                   return (
                     <tr key={log.id} className="trow">
                       <td style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                        {fmtDate(new Date(log.maintenanceDate).toISOString().slice(0, 10))}
+                        {fmtDate(log.maintenanceDate)}
                       </td>
                       <td>
                         {log.roomCode

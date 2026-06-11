@@ -109,6 +109,12 @@ export async function POST(req: NextRequest) {
     include: { profile: true },
   })
 
+  if (role === 'TECHNICIAN') {
+    await prisma.technician.create({
+      data: { name: user.profile?.displayName || username, userId: user.id },
+    })
+  }
+
   const ip = req.headers.get('x-forwarded-for') ?? req.headers.get('x-real-ip') ?? undefined
   await recordAudit({
     userId: auth.payload.userId,

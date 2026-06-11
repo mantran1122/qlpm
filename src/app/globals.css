@@ -231,6 +231,16 @@ html.dark .dim-overlay { background:rgba(0,0,0,.58); }
 }
 .mcell:hover { transform:scale(1.12); box-shadow:0 6px 16px rgba(20,40,80,.25); z-index:5; filter:brightness(1.06); }
 .chip { display:inline-flex; align-items:center; gap:6px; font-size:16px; font-weight:600; padding:4px 10px; border-radius:8px; }
+
+/* ===== Filter chip pills ===== */
+.filter-chip {
+  display:inline-flex; align-items:center; gap:7px; font-family:var(--font);
+  font-size:16px; font-weight:500; padding:7px 17px; border-radius:99px;
+  border:1.5px solid var(--border-strong); background:var(--surface); color:var(--text-muted);
+  cursor:pointer; transition:all .18s ease; white-space:nowrap; user-select:none; line-height:1;
+}
+.filter-chip:hover { color:var(--text); border-color:var(--text-faint); background:var(--surface-2); }
+.filter-chip .fc-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; transition:background .18s ease; }
 .linkbtn {
   background:none; border:none; cursor:pointer; font-family:var(--font); font-weight:600; font-size:17px;
   color:var(--primary); display:inline-flex; align-items:center; gap:5px; padding:0; transition:gap .16s ease, color .16s ease;

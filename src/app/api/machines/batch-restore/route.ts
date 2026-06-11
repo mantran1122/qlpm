@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
 
   const notes = body.notes?.trim() || 'Máy đã được sửa chữa và đưa vào hoạt động'
   const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const today = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()))
 
   // Chỉ xử lý máy đang thực sự lỗi
   const faultyMachines = await prisma.machine.findMany({

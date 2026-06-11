@@ -39,6 +39,8 @@ interface ApiMaintenanceLog {
   hardwareErrorsBefore: number
   softwareErrorsAfter: number
   hardwareErrorsAfter: number
+  actionType: string | null
+  machineNo: number | null
 }
 
 
@@ -288,10 +290,10 @@ function MachineDialog({ room, machine, onClose, onSave, onDelete, history, canM
                   <div style={{ paddingBottom: 6 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap' }}>
                       <span style={{ fontWeight: 600, fontSize: 13.5 }}>Bảo trì phòng</span>
-                      <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>{fmtDate(h.maintenanceDate.slice(0, 10))}</span>
+                      <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>{fmtDate(h.maintenanceDate)}</span>
                     </div>
                     <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 3 }}>{h.notes ?? '—'}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 3 }}>KTV: {h.technicianName ?? '—'}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 3 }}>Thực hiện: {h.technicianName ?? '—'}</div>
                   </div>
                 </div>
               ))}
@@ -555,7 +557,6 @@ export default function RoomDetailPage({ params }: { params: Promise<{ room: str
   const isAdmin = me?.user?.role === 'ADMIN'
   const isManager = me?.user?.role === 'MANAGER'
   const canManageMachines = isAdmin || isManager
-  const isKtv = me?.user?.role === 'TECHNICIAN'
 
   const [machines, setMachines] = useState<UiMachine[]>([])
   const [initialized, setInitialized] = useState(false)
@@ -574,6 +575,9 @@ export default function RoomDetailPage({ params }: { params: Promise<{ room: str
   const [bulkSaving, setBulkSaving] = useState(false)
   const [showBulkRestoreDialog, setShowBulkRestoreDialog] = useState(false)
   const [bulkRestoreNotes, setBulkRestoreNotes] = useState('')
+  const [showSnapshotDialog, setShowSnapshotDialog] = useState(false)
+  const [snapshotNotes, setSnapshotNotes] = useState('')
+  const [snapshotSaving, setSnapshotSaving] = useState(false)
   const [bulkRestoreSaving, setBulkRestoreSaving] = useState(false)
 
   // Initialize machines state once data arrives
@@ -747,6 +751,24 @@ export default function RoomDetailPage({ params }: { params: Promise<{ room: str
     refetchMachines()
   }
 
+  const handleSnapshot = async () => {
+    setSnapshotSaving(true)
+    const res = await csrfFetch(`/api/rooms/${encodeURIComponent(roomCode)}/snapshot`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes: snapshotNotes }),
+    })
+    setSnapshotSaving(false)
+    if (!res.ok) {
+      toast.error('Ghi nhận thất bại')
+      return
+    }
+    toast.success('Đã ghi nhận tình trạng phòng')
+    setShowSnapshotDialog(false)
+    setSnapshotNotes('')
+    refetch()
+  }
+
   if (loading) return <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-faint)', fontSize: 14 }}>Đang tải dữ liệu...</div>
   if (error)   return <div style={{ padding: 60, textAlign: 'center', color: 'var(--err-tx)', fontSize: 14 }}>Lỗi tải dữ liệu: {error}</div>
   if (!roomData) return null
@@ -790,11 +812,16 @@ export default function RoomDetailPage({ params }: { params: Promise<{ room: str
               ))}
             </div>
           </div>
-          {isAdmin && (
-            <button className="icon-btn" title="Cập nhật thông số" onClick={() => setShowEditSpec(true)}>
-              <Icon name="edit" size={16} />
-            </button>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <Button size="sm" variant="outline" icon="checkCircle" onClick={() => setShowSnapshotDialog(true)}>
+              Ghi nhận tình trạng
+            </Button>
+            {isAdmin && (
+              <button className="icon-btn" title="Cập nhật thông số" onClick={() => setShowEditSpec(true)}>
+                <Icon name="edit" size={16} />
+              </button>
+            )}
+          </div>
         </div>
         <div className="grid-kpi" style={{ marginTop: 22, gap: 14 }}>
           {headStats.map(h => (
@@ -896,57 +923,68 @@ export default function RoomDetailPage({ params }: { params: Promise<{ room: str
           </div>
         </Card>
 
-        {!isKtv && (
-        <Card pad={22} style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <Card pad={22} style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
           <CardHead title="Lịch sử bảo trì phòng này" />
-          {roomData.maintenanceLogs.length === 0 ? (
-            <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-faint)', fontSize: 13 }}>Chưa có bản ghi bảo trì.</div>
-          ) : (
-            <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
-              <table className="tbl">
-                <thead><tr><th>Mã</th><th>Ngày</th><th>Kỹ thuật viên</th><th>Ghi chú</th><th style={{ textAlign: 'center' }}>Lỗi</th>{isAdmin && <th />}</tr></thead>
-                <tbody>
-                  {roomData.maintenanceLogs.map(m => {
-                    const before = m.softwareErrorsBefore + m.hardwareErrorsBefore
-                    const after  = m.softwareErrorsAfter  + m.hardwareErrorsAfter
-                    const isDeleting = deletingId === m.id
-                    return (
-                      <tr key={m.id} className="trow">
-                        <td style={{ fontWeight: 600, color: 'var(--primary)' }}>#{m.id}</td>
-                        <td style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{fmtDate(m.maintenanceDate.slice(0, 10))}</td>
-                        <td style={{ whiteSpace: 'nowrap' }}>{m.technicianName ?? '—'}</td>
-                        <td style={{ color: 'var(--text-muted)', maxWidth: 200 }}>{m.notes ?? '—'}</td>
-                        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
-                            <span style={{ color: 'var(--text-faint)' }}>{before}</span>
-                            <Icon name="arrowR" size={13} style={{ color: 'var(--good)' }} />
-                            <span style={{ color: 'var(--good-tx)' }}>{after}</span>
-                          </span>
-                        </td>
-                        {isAdmin && (
-                          <td style={{ whiteSpace: 'nowrap' }}>
-                            {isDeleting ? (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                                <button className="icon-btn" style={{ color: 'var(--err)' }} onClick={() => handleLogDelete(m.id)} title="Xác nhận xoá"><Icon name="check" size={15} /></button>
-                                <button className="icon-btn" onClick={() => setDeletingId(null)} title="Hủy"><Icon name="x" size={15} /></button>
-                              </span>
-                            ) : (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                <button className="icon-btn" onClick={() => setEditingLog(m)} title="Sửa"><Icon name="edit" size={15} /></button>
-                                <button className="icon-btn" style={{ color: 'var(--err)' }} onClick={() => setDeletingId(m.id)} title="Xoá"><Icon name="trash" size={15} /></button>
-                              </span>
-                            )}
+          <div style={{ flex: 1, position: 'relative', minHeight: 0 }}>
+            <div style={{ position: 'absolute', inset: 0, overflowY: 'auto' }}>
+              {roomData.maintenanceLogs.length === 0 ? (
+                <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-faint)', fontSize: 13 }}>Chưa có bản ghi bảo trì.</div>
+              ) : (
+                <table className="tbl">
+                  <thead><tr><th>Mã</th><th>Loại</th><th>Ngày</th><th>Người thực hiện</th><th>Ghi chú</th><th style={{ textAlign: 'center' }}>Lỗi trước</th>{isAdmin && <th />}</tr></thead>
+                  <tbody>
+                    {roomData.maintenanceLogs.map(m => {
+                      const before = m.softwareErrorsBefore + m.hardwareErrorsBefore
+                      const after  = m.softwareErrorsAfter  + m.hardwareErrorsAfter
+                      const isDeleting = deletingId === m.id
+                      return (
+                        <tr key={m.id} className="trow">
+                          <td style={{ fontWeight: 600, color: 'var(--primary)' }}>#{m.id}</td>
+                          <td>
+                            <Badge tone={
+                              m.actionType === 'ROOM_STATUS_SNAPSHOT' ? 'info' :
+                              m.actionType === 'DISABLE_FAULTY_MACHINE' ? 'err' :
+                              m.actionType === 'RESTORE_MACHINE' ? 'good' : 'muted'
+                            }>
+                              {m.actionType === 'ROOM_STATUS_SNAPSHOT' ? 'Ghi nhận' :
+                               m.actionType === 'DISABLE_FAULTY_MACHINE' ? 'Tắt máy' :
+                               m.actionType === 'RESTORE_MACHINE' ? 'Sửa xong' : 'Bảo trì'}
+                            </Badge>
                           </td>
-                        )}
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+                          <td style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{fmtDate(m.maintenanceDate)}</td>
+                          <td style={{ whiteSpace: 'nowrap' }}>{m.technicianName ?? '—'}</td>
+                          <td style={{ color: 'var(--text-muted)', maxWidth: 200 }}>{m.notes ?? '—'}</td>
+                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+                              <span style={{ color: 'var(--text-faint)' }}>{before}</span>
+                              <Icon name="arrowR" size={13} style={{ color: 'var(--good)' }} />
+                              <span style={{ color: 'var(--good-tx)' }}>{after}</span>
+                            </span>
+                          </td>
+                          {isAdmin && (
+                            <td style={{ whiteSpace: 'nowrap' }}>
+                              {isDeleting ? (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                  <button className="icon-btn" style={{ color: 'var(--err)' }} onClick={() => handleLogDelete(m.id)} title="Xác nhận xoá"><Icon name="check" size={15} /></button>
+                                  <button className="icon-btn" onClick={() => setDeletingId(null)} title="Hủy"><Icon name="x" size={15} /></button>
+                                </span>
+                              ) : (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                  <button className="icon-btn" onClick={() => setEditingLog(m)} title="Sửa"><Icon name="edit" size={15} /></button>
+                                  <button className="icon-btn" style={{ color: 'var(--err)' }} onClick={() => setDeletingId(m.id)} title="Xoá"><Icon name="trash" size={15} /></button>
+                                </span>
+                              )}
+                            </td>
+                          )}
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              )}
             </div>
-          )}
+          </div>
         </Card>
-        )}
       </div>
 
       {sel && (
@@ -1033,6 +1071,50 @@ export default function RoomDetailPage({ params }: { params: Promise<{ room: str
           </Dialog>
         )
       })()}
+      {showSnapshotDialog && (
+        <Dialog open={true} onClose={() => { setShowSnapshotDialog(false); setSnapshotNotes('') }} width={420}>
+          <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ fontSize: 16, fontWeight: 700 }}>Ghi nhận tình trạng — Phòng {roomData.roomCode}</div>
+            <button className="icon-btn" onClick={() => { setShowSnapshotDialog(false); setSnapshotNotes('') }}><Icon name="x" size={18} /></button>
+          </div>
+          <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+              {[
+                { label: 'Máy tốt', val: stats.good + stats.teacher, color: 'var(--good-tx)' },
+                { label: 'Lỗi PM', val: stats.sw + stats.both, color: 'var(--err-tx)' },
+                { label: 'Lỗi PC', val: stats.hw + stats.both, color: 'var(--err-tx)' },
+              ].map(s => (
+                <div key={s.label} style={{ padding: '12px 14px', borderRadius: 10, background: 'var(--surface-2)', border: '1px solid var(--border)', textAlign: 'center' }}>
+                  <div style={{ fontSize: 24, fontWeight: 800, color: s.color }}>{s.val}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 3 }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-faint)', fontWeight: 600, display: 'block', marginBottom: 6 }}>
+                Ghi chú thêm (tuỳ chọn)
+              </label>
+              <textarea
+                style={{
+                  width: '100%', padding: '8px 10px', borderRadius: 8,
+                  border: '1px solid var(--border)', background: 'var(--surface-2)',
+                  color: 'var(--text)', fontSize: 13, resize: 'vertical',
+                  minHeight: 56, outline: 'none', boxSizing: 'border-box', fontFamily: 'var(--font)',
+                }}
+                value={snapshotNotes}
+                onChange={e => setSnapshotNotes(e.target.value)}
+                placeholder="Ghi chú thêm về tình trạng phòng…"
+              />
+            </div>
+          </div>
+          <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+            <Button variant="ghost" size="sm" onClick={() => { setShowSnapshotDialog(false); setSnapshotNotes('') }}>Hủy</Button>
+            <Button variant="primary" size="sm" icon="checkCircle" onClick={handleSnapshot} disabled={snapshotSaving}>
+              {snapshotSaving ? 'Đang ghi…' : 'Ghi nhận'}
+            </Button>
+          </div>
+        </Dialog>
+      )}
       {showBulkDialog && (
         <Dialog open={showBulkDialog} onClose={() => setShowBulkDialog(false)} width={480}>
           <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)' }}>

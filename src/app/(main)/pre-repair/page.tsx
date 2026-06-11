@@ -12,6 +12,17 @@ interface ApiRoom { id: number; roomCode: string }
 interface ApiTech { id: number; name: string }
 interface ApiMachine { id: number; machineNo: number; isTeacher: boolean; roomId: number }
 
+interface ApiSnapshot {
+  id: number
+  maintenanceDate: string
+  actionType: string | null
+  notes: string | null
+  room: { roomCode: string } | null
+  technicianName: string | null
+  createdBy: { username: string; profile: { displayName: string } | null } | null
+}
+interface PaginatedSnapshots { data: ApiSnapshot[]; total: number; page: number; totalPages: number }
+
 interface PreRepairRecord {
   id: number
   machineId: number
@@ -316,6 +327,8 @@ export default function PreRepairPage() {
   const [createOpen,  setCreateOpen]  = useState(false)
   const [detail,      setDetail]      = useState<PreRepairRecord | null>(null)
   const [roomFilter,  setRoomFilter]  = useState('')
+  const [activeTab,   setActiveTab]   = useState<'machines' | 'rooms'>('machines')
+  const [snapPage,    setSnapPage]    = useState(1)
   const perPage = 10
 
   const { data: rooms } = useFetch<ApiRoom[]>('/api/rooms')
@@ -329,35 +342,63 @@ export default function PreRepairPage() {
     return `/api/pre-repair-status?${p}`
   })()
 
+  const snapApiUrl = (() => {
+    if (activeTab !== 'rooms') return ''
+    const p = new URLSearchParams({ page: String(snapPage), limit: String(perPage), actionType: 'ROOM_STATUS_SNAPSHOT' })
+    if (roomFilter) p.set('roomCode', roomFilter)
+    return `/api/maintenance?${p}`
+  })()
+
   const { data: resp, loading, error, refetch } = useFetch<PaginatedRecords>(apiUrl)
+  const { data: snapResp, loading: snapLoading } = useFetch<PaginatedSnapshots>(snapApiUrl)
 
   const handleSaved = useCallback(() => { refetch(); setPage(1) }, [refetch])
 
-  if (loading) return <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-faint)', fontSize: 14 }}>Đang tải dữ liệu…</div>
-  if (error)   return <div style={{ padding: 60, textAlign: 'center', color: 'var(--err-tx)',    fontSize: 14 }}>Lỗi tải dữ liệu: {error}</div>
+  if (loading && activeTab === 'machines') return <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-faint)', fontSize: 14 }}>Đang tải dữ liệu…</div>
+  if (error && activeTab === 'machines')   return <div style={{ padding: 60, textAlign: 'center', color: 'var(--err-tx)',    fontSize: 14 }}>Lỗi tải dữ liệu: {error}</div>
 
   const records    = resp?.data ?? []
   const total      = resp?.total ?? 0
   const totalPages = resp?.totalPages ?? 1
   const roomOpts   = [{ value: '', label: 'Tất cả phòng' }, ...(rooms ?? []).map(r => ({ value: r.roomCode, label: r.roomCode }))]
 
+  const snaps      = snapResp?.data ?? []
+  const snapTotal  = snapResp?.total ?? 0
+  const snapTotalPages = snapResp?.totalPages ?? 1
+
   return (
     <div className="stack">
       {/* Toolbar */}
       <Card pad={16} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-faint)', fontSize: 12.5, fontWeight: 600 }}>
+        {/* Tab switcher */}
+        <div style={{ display: 'flex', gap: 4, padding: 3, background: 'var(--surface-3)', borderRadius: 10 }}>
+          {([['machines', 'Tình trạng máy'], ['rooms', 'Tình trạng phòng']] as const).map(([k, l]) => (
+            <button key={k} onClick={() => setActiveTab(k)} style={{
+              padding: '5px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
+              fontFamily: 'var(--font)', fontSize: 12.5, fontWeight: 600,
+              background: activeTab === k ? 'var(--surface)' : 'transparent',
+              color: activeTab === k ? 'var(--primary)' : 'var(--text-muted)',
+              boxShadow: activeTab === k ? 'var(--shadow-sm)' : 'none',
+              transition: 'all .14s',
+            }}>{l}</button>
+          ))}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-faint)', fontSize: 12.5, fontWeight: 600, marginLeft: 4 }}>
           <Icon name="filter" size={16} />Lọc
         </div>
-        <select value={roomFilter} onChange={e => { setRoomFilter(e.target.value); setPage(1) }}
+        <select value={roomFilter} onChange={e => { setRoomFilter(e.target.value); setPage(1); setSnapPage(1) }}
           style={{ height: 36, border: '1px solid var(--border-strong)', borderRadius: 9, padding: '0 12px', fontFamily: 'var(--font)', fontSize: 13, background: 'var(--surface)', color: 'var(--text)' }}>
           {roomOpts.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
-        <Button variant="primary" icon="plus" style={{ marginLeft: 'auto' }} onClick={() => setCreateOpen(true)}>
-          Ghi nhận mới
-        </Button>
+        {activeTab === 'machines' && (
+          <Button variant="primary" icon="plus" style={{ marginLeft: 'auto' }} onClick={() => setCreateOpen(true)}>
+            Ghi nhận mới
+          </Button>
+        )}
       </Card>
 
-      {/* Bảng */}
+      {/* Bảng tình trạng máy */}
+      {activeTab === 'machines' && (
       <Card pad={0}>
         <div style={{ overflowX: 'auto' }}>
           <table className="tbl" style={{ minWidth: 760 }}>
@@ -387,7 +428,7 @@ export default function PreRepairPage() {
                   <tr key={r.id} className="trow" style={{ cursor: 'pointer' }} onClick={() => setDetail(r)}>
                     <td style={{ paddingLeft: 22, whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: 600 }}>{recordId(r)}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-faint)' }}>{fmtDate(r.createdAt.slice(0, 10))}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-faint)' }}>{fmtDate(r.createdAt)}</div>
                     </td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       <Badge tone="muted">{r.room?.roomCode ?? '—'}</Badge>
@@ -419,8 +460,6 @@ export default function PreRepairPage() {
             </tbody>
           </table>
         </div>
-
-        {/* Pagination */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 22px', borderTop: '1px solid var(--border)' }}>
           <span style={{ fontSize: 12.5, color: 'var(--text-faint)' }}>
             {total === 0 ? '0 bản ghi' : `Hiển thị ${(page - 1) * perPage + 1}–${Math.min(page * perPage, total)} / ${total} bản ghi`}
@@ -441,6 +480,75 @@ export default function PreRepairPage() {
           </div>
         </div>
       </Card>
+      )}
+
+      {/* Bảng tình trạng phòng (snapshots) */}
+      {activeTab === 'rooms' && (
+      <Card pad={0}>
+        {snapLoading ? (
+          <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-faint)', fontSize: 13.5 }}>Đang tải…</div>
+        ) : (
+        <div style={{ overflowX: 'auto' }}>
+          <table className="tbl" style={{ minWidth: 600 }}>
+            <thead>
+              <tr>
+                <th style={{ paddingLeft: 22, whiteSpace: 'nowrap' }}>Mã / Ngày</th>
+                <th style={{ whiteSpace: 'nowrap' }}>Phòng</th>
+                <th>Tình trạng máy</th>
+                <th style={{ whiteSpace: 'nowrap' }}>Người ghi nhận</th>
+              </tr>
+            </thead>
+            <tbody>
+              {snaps.length === 0 && (
+                <tr>
+                  <td colSpan={4} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-faint)', fontSize: 13.5 }}>
+                    Chưa có bản ghi tình trạng phòng nào.
+                  </td>
+                </tr>
+              )}
+              {snaps.map(s => {
+                const creator = s.technicianName ?? s.createdBy?.profile?.displayName ?? s.createdBy?.username ?? '—'
+                return (
+                  <tr key={s.id} className="trow">
+                    <td style={{ paddingLeft: 22, whiteSpace: 'nowrap' }}>
+                      <div style={{ fontWeight: 600, color: 'var(--primary)' }}>GSN-{String(s.id).padStart(4, '0')}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-faint)' }}>{fmtDate(s.maintenanceDate)}</div>
+                    </td>
+                    <td style={{ whiteSpace: 'nowrap' }}>
+                      <Badge tone="info">{s.room?.roomCode ?? '—'}</Badge>
+                    </td>
+                    <td style={{ fontSize: 13, color: 'var(--text-muted)', maxWidth: 340 }}>
+                      {s.notes ?? '—'}
+                    </td>
+                    <td style={{ fontSize: 13, whiteSpace: 'nowrap' }}>{creator}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+        )}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 22px', borderTop: '1px solid var(--border)' }}>
+          <span style={{ fontSize: 12.5, color: 'var(--text-faint)' }}>
+            {snapTotal === 0 ? '0 bản ghi' : `Hiển thị ${(snapPage - 1) * perPage + 1}–${Math.min(snapPage * perPage, snapTotal)} / ${snapTotal} bản ghi`}
+          </span>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button className="icon-btn" disabled={snapPage === 1} onClick={() => setSnapPage(p => p - 1)} style={{ opacity: snapPage === 1 ? .4 : 1 }}>
+              <Icon name="chevronL" size={16} />
+            </button>
+            {Array.from({ length: snapTotalPages }, (_, i) => (
+              <button key={i} onClick={() => setSnapPage(i + 1)} className="icon-btn"
+                style={{ width: 36, fontWeight: 600, fontSize: 13, ...(snapPage === i + 1 ? { background: 'var(--primary)', color: '#fff', borderColor: 'var(--primary)' } : {}) }}>
+                {i + 1}
+              </button>
+            ))}
+            <button className="icon-btn" disabled={snapPage === snapTotalPages} onClick={() => setSnapPage(p => p + 1)} style={{ opacity: snapPage === snapTotalPages ? .4 : 1 }}>
+              <Icon name="chevronR" size={16} />
+            </button>
+          </div>
+        </div>
+      </Card>
+      )}
 
       <CreateSheet open={createOpen} onClose={() => setCreateOpen(false)} onSaved={handleSaved} />
       <DetailSheet record={detail} onClose={() => setDetail(null)} />

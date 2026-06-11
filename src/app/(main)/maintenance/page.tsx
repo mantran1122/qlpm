@@ -388,7 +388,7 @@ export default function MaintenancePage() {
                   <tr key={m.id} className="trow">
                     <td style={{ paddingLeft: 22, whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: 600, color: m.isSupplyIntake ? 'var(--primary)' : 'var(--text)' }}>{logId(m)}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-faint)' }}>{fmtDate(m.maintenanceDate.slice(0, 10))}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-faint)' }}>{fmtDate(m.maintenanceDate)}</div>
                     </td>
                     <td>{m.isSupplyIntake ? <Badge tone="info" icon="pkgIn">Nhập kho</Badge> : <Badge tone="muted">{m.room?.roomCode ?? '—'}</Badge>}</td>
                     <td style={{ whiteSpace: 'nowrap' }}>

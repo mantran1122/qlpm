@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
   })
 
   const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const today = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()))
   const errorLabels = Object.keys(data)
     .filter(k => k !== 'isFaulty')
     .map(k => k.replace('Error', ''))

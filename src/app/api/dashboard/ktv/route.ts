@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
     rangeStart = new Date(now.getFullYear(), now.getMonth(), 1)
   }
 
-  const baseWhere = { createdById: targetUserId, isSupplyIntake: false }
+  const baseWhere = { createdById: targetUserId, isSupplyIntake: false, actionType: { not: 'ROOM_STATUS_SNAPSHOT' } }
 
   // KPI trong khoảng thời gian
   const [kpiRestore, kpiIncident, allTime] = await Promise.all([

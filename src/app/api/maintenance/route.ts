@@ -15,11 +15,16 @@ export async function GET(req: NextRequest) {
   const page = Math.max(1, Number(searchParams.get('page') || 1))
   const limit = Math.min(100, Math.max(1, Number(searchParams.get('limit') || 20)))
 
+  const actionType = searchParams.get('actionType')
   const where: Record<string, unknown> = {}
 
   // TECHNICIAN chỉ thấy bản ghi do chính họ tạo, bất kể client gửi param gì
   if (auth.role === 'TECHNICIAN') {
     where.createdById = auth.userId
+  }
+
+  if (actionType) {
+    where.actionType = actionType
   }
 
   if (roomCode) {

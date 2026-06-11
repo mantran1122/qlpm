@@ -1,8 +1,8 @@
 # UPGRADE_PLAN.md — Kế hoạch Nâng cấp Phong May Manager
 
 > **Trạng thái kế hoạch:** ✅ HOÀN CHỈNH — tất cả câu hỏi đã được xác nhận
-> **Tiến độ implement:** Phase A ✅ · Phase B ✅ · Phase C ✅ · Phase D ✅ · Phase E ⏳
-> **Ngày tạo:** 2026-06-10  |  **Ngày cập nhật:** 2026-06-10 (lần 3)
+> **Tiến độ implement:** Phase A ✅ · Phase B ✅ · Phase C ✅ · Phase D ✅ · Phase E ✅
+> **Ngày tạo:** 2026-06-10  |  **Ngày cập nhật:** 2026-06-10 (lần 4)
 > **Người soạn:** Claude Code (sau khi đọc toàn bộ codebase + xác nhận 10 câu hỏi)
 
 ---
@@ -657,11 +657,13 @@ npx prisma migrate status                        # kiểm tra
   ├── ✅ D3. UI: /reports với 4 tabs + date range filter + export button
   └── ⏳ D4. (Optional) Migration 6: report_snapshots + cache logic — bỏ qua
 
-⏳ Phase E — Kiểm thử & Hoàn thiện (CHƯA BẮT ĐẦU)
-  ├── E1. Unit test: service pre-repair, recall, ticket, report
-  ├── E2. Integration test: luồng chính từng hạng mục
-  ├── E3. Regression: maintenance, notifications, rooms/machines, supplies
-  └── E4. Cập nhật README
+✅ Phase E — Kiểm thử & Hoàn thiện (DONE — 2026-06-10)
+  ├── ✅ E1. Unit test: getMachineStatus, getMachineColor (machine-utils)
+  ├── ✅ E2. Integration test: pre-repair API (GET filter, POST validation + CSRF + audit)
+  ├── ✅ E3. Integration test: recall API (POST validation, TECHNICIAN auto-resolve tech, check-overdue + debounce)
+  ├── ✅ E4. Integration test: ticket API (GUEST filter, TECHNICIAN OR condition, urgent→ERROR notification)
+  ├── ✅ E5. Integration test: report API (date range validation, type routing, legacy mode, period presets)
+  └── ⏳ E6. Cập nhật README — bỏ qua (không yêu cầu)
 ```
 
 **Lý do thứ tự:** Phase A trước vì recall tham chiếu `preRepairStatusId`. Phase B+C có thể chạy song song vì độc lập. Phase D cần dữ liệu thực từ A+B+C để test báo cáo có ý nghĩa.

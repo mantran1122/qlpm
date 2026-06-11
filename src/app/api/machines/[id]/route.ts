@@ -135,7 +135,7 @@ export async function PUT(
 
   const reason = (body.extraNotes as string | null) ?? machine.extraNotes ?? ''
   const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const today = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()))
 
   // DISABLE: máy vừa chuyển sang trạng thái lỗi
   if (wasGood && nowFaulty && prevMachine?.room) {

@@ -161,7 +161,7 @@ export default function DashboardPage() {
                   const after = m.softwareErrorsAfter + m.hardwareErrorsAfter
                   return (
                     <tr key={m.id} className="trow">
-                      <td style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{fmtDate(m.maintenanceDate.slice(0, 10))}</td>
+                      <td style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{fmtDate(m.maintenanceDate)}</td>
                       <td><Badge tone="info">{m.room?.roomCode ?? '—'}</Badge></td>
                       <td style={{ whiteSpace: 'nowrap' }}>{m.technician ?? '—'}</td>
                       <td style={{ textAlign: 'center' }}>

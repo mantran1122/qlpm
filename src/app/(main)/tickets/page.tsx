@@ -246,7 +246,7 @@ export default function TicketsPage() {
   const hasUnread = tickets.some(t => t.hasUnreadReply)
 
   return (
-    <div style={{ padding: '28px 32px', maxWidth: 900, margin: '0 auto' }}>
+    <div style={{ padding: '28px 32px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, gap: 16, flexWrap: 'wrap' }}>
         <div>
           <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Ticket của tôi</h2>
@@ -263,13 +263,38 @@ export default function TicketsPage() {
       </div>
 
       {/* Filter */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
-        {(['', 'PENDING', 'APPROVED', 'REJECTED', 'IN_PROGRESS', 'RESOLVED'] as const).map(s => (
-          <button key={s} onClick={() => { setStatusFilter(s); setPage(1) }}
-            className={`filter-chip ${statusFilter === s ? 'active' : ''}`}>
-            {s === '' ? 'Tất cả' : STATUS_LABELS[s as TicketStatus]}
-          </button>
-        ))}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
+        {(['', 'PENDING', 'APPROVED', 'REJECTED', 'IN_PROGRESS', 'RESOLVED'] as const).map(s => {
+          const isActive = statusFilter === s
+          const dotColor: Record<string, string> = {
+            '': 'var(--primary)', PENDING: 'var(--both)', APPROVED: 'var(--primary)',
+            REJECTED: 'var(--err)', IN_PROGRESS: 'var(--teacher)', RESOLVED: 'var(--good)',
+          }
+          const activeBg: Record<string, string> = {
+            '': 'var(--primary)', PENDING: 'var(--both)', APPROVED: 'var(--primary)',
+            REJECTED: 'var(--err)', IN_PROGRESS: 'var(--teacher)', RESOLVED: 'var(--good)',
+          }
+          return (
+            <button key={s} onClick={() => { setStatusFilter(s); setPage(1) }}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 7,
+                fontFamily: 'var(--font)', fontSize: 15, fontWeight: isActive ? 600 : 500,
+                padding: '7px 16px', borderRadius: 99,
+                border: `1.5px solid ${isActive ? activeBg[s] : 'var(--border-strong)'}`,
+                background: isActive ? activeBg[s] : 'var(--surface)',
+                color: isActive ? '#fff' : 'var(--text-muted)',
+                cursor: 'pointer', whiteSpace: 'nowrap' as const, userSelect: 'none' as const,
+                transition: 'all .18s ease', lineHeight: 1,
+              }}
+            >
+              <span style={{
+                width: 7, height: 7, borderRadius: '50%', flexShrink: 0, display: 'inline-block',
+                background: isActive ? 'rgba(255,255,255,.7)' : dotColor[s],
+              }} />
+              {s === '' ? 'Tất cả' : STATUS_LABELS[s as TicketStatus]}
+            </button>
+          )
+        })}
       </div>
 
       {loading ? (
