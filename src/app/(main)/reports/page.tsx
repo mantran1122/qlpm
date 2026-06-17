@@ -562,11 +562,12 @@ export default function ReportsPage() {
   const [data,     setData]   = useState<ReportData | null>(null)
   const [loading,  setLoading] = useState(false)
   const [exporting, setExporting] = useState(false)
-  const [rooms,    setRooms]  = useState<Room[]>([])
-  const [techs,    setTechs]  = useState<Technician[]>([])
-  const [filterRoom, setFilterRoom] = useState('')
-  const [filterTech, setFilterTech] = useState('')
-  const [tick,     setTick]   = useState(0)
+  const [rooms,         setRooms]         = useState<Room[]>([])
+  const [techs,         setTechs]         = useState<Technician[]>([])
+  const [filterRooms,   setFilterRooms]   = useState<number[]>([])
+  const [showRoomPicker, setShowRoomPicker] = useState(false)
+  const [filterTech,    setFilterTech]    = useState('')
+  const [tick,          setTick]          = useState(0)
 
   useEffect(() => {
     fetch('/api/rooms').then(r => r.ok ? r.json() : []).then(setRooms).catch(() => {})
@@ -582,10 +583,21 @@ export default function ReportsPage() {
       if (from) p.set('from', from)
       if (to)   p.set('to', to)
     }
-    if (filterRoom && (tab === 'machines' || tab === 'parts-usage')) p.set('roomId', filterRoom)
+    if (filterRooms.length > 0 && (tab === 'machines' || tab === 'parts-usage' || tab === 'daily' || period === 'today')) p.set('roomIds', filterRooms.join(','))
     if (filterTech && tab === 'recall-kpi') p.set('technicianId', filterTech)
     return p
-  }, [tab, period, from, to, filterRoom, filterTech])
+  }, [tab, period, from, to, filterRooms, filterTech])
+
+  // Close room picker on outside click
+  useEffect(() => {
+    if (!showRoomPicker) return
+    const handler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (!target.closest('[data-room-picker]')) setShowRoomPicker(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showRoomPicker])
 
   // Auto-fetch on tab or period change
   useEffect(() => {
@@ -637,7 +649,7 @@ export default function ReportsPage() {
           {TABS.map(t => (
             <button key={t.key}
               onClick={() => {
-                setTab(t.key); setFilterRoom(''); setFilterTech('')
+                setTab(t.key); setFilterRooms([]); setFilterTech(''); setShowRoomPicker(false)
                 if (t.key === 'daily') setPeriod('today')
               }}
               className={`filter-chip ${(t.key === 'daily' ? period === 'today' : tab === t.key && period !== 'today') ? 'active' : ''}`}
@@ -651,11 +663,35 @@ export default function ReportsPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <PeriodSelector period={period} setPeriod={v => { setPeriod(v); if (v !== 'custom') setTick(t => t + 1) }} from={from} setFrom={setFrom} to={to} setTo={setTo} />
 
-          {(tab === 'machines' || tab === 'parts-usage') && (
-            <select value={filterRoom} onChange={e => setFilterRoom(e.target.value)} style={sel}>
-              <option value="">Tất cả phòng</option>
-              {rooms.map(r => <option key={r.id} value={String(r.id)}>{r.roomCode}</option>)}
-            </select>
+          {(tab === 'machines' || tab === 'parts-usage' || tab === 'daily' || period === 'today') && (
+            <div style={{ position: 'relative' }} data-room-picker>
+              <button
+                onClick={() => setShowRoomPicker(p => !p)}
+                style={{ ...sel, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, paddingRight: 28 }}>
+                {filterRooms.length === 0 ? 'Tất cả phòng' : `${filterRooms.length} phòng đã chọn`}
+                <span style={{ marginLeft: 'auto', color: 'var(--text-faint)', fontSize: 11 }}>▼</span>
+              </button>
+              {showRoomPicker && (
+                <div style={{ position: 'absolute', top: 40, left: 0, zIndex: 50, background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 10, boxShadow: '0 4px 20px rgba(0,0,0,.15)', minWidth: 180, maxHeight: 280, overflowY: 'auto', padding: '6px 0' }}>
+                  <div style={{ padding: '6px 12px', borderBottom: '1px solid var(--border)' }}>
+                    <button onClick={() => setFilterRooms([])} style={{ fontSize: 12, color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                      Bỏ chọn tất cả
+                    </button>
+                  </div>
+                  {rooms.map(r => (
+                    <label key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 14px', cursor: 'pointer', fontSize: 13 }}>
+                      <input
+                        type="checkbox"
+                        checked={filterRooms.includes(r.id)}
+                        onChange={e => setFilterRooms(prev => e.target.checked ? [...prev, r.id] : prev.filter(id => id !== r.id))}
+                        style={{ accentColor: 'var(--primary)', width: 14, height: 14 }}
+                      />
+                      {r.roomCode}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
 
           {tab === 'recall-kpi' && (

@@ -86,19 +86,29 @@ function addTitle(ws: ExcelJS.Worksheet, text: string, cols: number) {
 }
 
 // ── Sheet: Báo cáo máy lỗi ──────────────────────────────────────────────────
-async function buildMachinesSheet(ws: ExcelJS.Worksheet, from: Date, to: Date, roomId?: number) {
+async function buildMachinesSheet(ws: ExcelJS.Worksheet, from: Date, to: Date, roomIds?: number[]) {
+  const roomFilter = roomIds?.length ? { roomId: { in: roomIds } } : {}
   const [rooms, allMachines, logs] = await Promise.all([
     prisma.room.findMany({ include: { floor: true }, orderBy: [{ floorId: 'asc' }, { roomCode: 'asc' }] }),
-    roomId ? prisma.machine.findMany({ where: { roomId } }) : prisma.machine.findMany(),
+    prisma.machine.findMany({ where: roomFilter }),
     prisma.maintenanceLog.findMany({
-      where: { isSupplyIntake: false, maintenanceDate: { gte: from, lte: to }, ...(roomId ? { roomId } : {}) },
-      include: { room: true },
+      where: { isSupplyIntake: false, maintenanceDate: { gte: from, lte: to }, ...roomFilter },
+      include: {
+        room: true,
+        machine: {
+          select: {
+            softwareError: true, caseError: true, cpuError: true, ramError: true, diskError: true,
+            powerError: true, monitorError: true, monitorCableError: true, powerCableError: true,
+            mouseError: true, networkError: true, keyboardError: true,
+          },
+        },
+      },
       orderBy: { maintenanceDate: 'desc' },
     }),
   ])
 
-  const filteredRooms = roomId ? rooms.filter(r => r.id === roomId) : rooms
-  addTitle(ws, `Báo cáo máy lỗi — ${fmtDate(from)} đến ${fmtDate(to)}`, 8)
+  const filteredRooms = roomIds?.length ? rooms.filter(r => roomIds.includes(r.id)) : rooms
+  addTitle(ws, `Báo cáo máy lỗi — ${fmtDate(from)} đến ${fmtDate(to)}`, 10)
 
   // Summary
   const totalMachines = allMachines.length
@@ -113,7 +123,7 @@ async function buildMachinesSheet(ws: ExcelJS.Worksheet, from: Date, to: Date, r
   ws.columns = [
     { key: 'a', width: 12 }, { key: 'b', width: 14 }, { key: 'c', width: 12 },
     { key: 'd', width: 12 }, { key: 'e', width: 10 }, { key: 'f', width: 10 },
-    { key: 'g', width: 10 }, { key: 'h', width: 12 },
+    { key: 'g', width: 10 }, { key: 'h', width: 12 }, { key: 'i', width: 30 }, { key: 'j', width: 8 },
   ]
 
   for (const room of filteredRooms) {
@@ -132,9 +142,15 @@ async function buildMachinesSheet(ws: ExcelJS.Worksheet, from: Date, to: Date, r
   ws.addRow([])
 
   // Maintenance logs
-  const hdr2 = ws.addRow(['Ngày', 'Phòng', 'Kỹ thuật viên', 'Lỗi PM trước', 'Lỗi PC trước', 'Lỗi PM sau', 'Lỗi PC sau', 'Ghi chú'])
+  const hdr2 = ws.addRow(['Ngày', 'Phòng', 'Kỹ thuật viên', 'Lỗi PM trước', 'Lỗi PC trước', 'Lỗi PM sau', 'Lỗi PC sau', 'Ghi chú', 'Lỗi được ghi nhận', 'Máy'])
   styleSubHeader(hdr2)
   for (const m of logs) {
+    const machineErrors = m.machine
+      ? ERROR_FIELDS
+          .filter(f => (m.machine as Record<string, unknown>)[f] != null && (m.machine as Record<string, unknown>)[f] !== '')
+          .map(f => ERROR_LABELS[f] ?? f)
+          .join(', ')
+      : ''
     ws.addRow([
       fmtDate(m.maintenanceDate),
       m.room?.roomCode ?? '—',
@@ -142,6 +158,8 @@ async function buildMachinesSheet(ws: ExcelJS.Worksheet, from: Date, to: Date, r
       m.softwareErrorsBefore, m.hardwareErrorsBefore,
       m.softwareErrorsAfter, m.hardwareErrorsAfter,
       m.notes ?? '',
+      machineErrors || '—',
+      m.machineNo ?? '—',
     ])
   }
 }
@@ -177,12 +195,12 @@ async function buildSupplySheet(ws: ExcelJS.Worksheet, from: Date, to: Date) {
 }
 
 // ── Sheet: Linh kiện sử dụng ─────────────────────────────────────────────────
-async function buildPartsSheet(ws: ExcelJS.Worksheet, from: Date, to: Date, roomId?: number) {
+async function buildPartsSheet(ws: ExcelJS.Worksheet, from: Date, to: Date, roomIds?: number[]) {
   const logs = await prisma.maintenanceLog.findMany({
     where: {
       isSupplyIntake: false,
       maintenanceDate: { gte: from, lte: to },
-      ...(roomId ? { roomId } : {}),
+      ...(roomIds?.length ? { roomId: { in: roomIds } } : {}),
       OR: SUPPLY_FIELDS.map(f => ({ [f]: { gt: 0 } })),
     },
     include: { room: true },
@@ -266,17 +284,87 @@ async function buildKpiSheet(ws: ExcelJS.Worksheet, from: Date, to: Date, techId
   }
 }
 
+// ── Sheet: Hôm nay ───────────────────────────────────────────────────────────
+async function buildDailySheet(ws: ExcelJS.Worksheet, from: Date, to: Date, roomIds?: number[]) {
+  const roomFilter = roomIds?.length ? { roomId: { in: roomIds } } : {}
+  const [rooms, allMachines, logs] = await Promise.all([
+    prisma.room.findMany({ include: { floor: true }, orderBy: [{ floorId: 'asc' }, { roomCode: 'asc' }] }),
+    prisma.machine.findMany({ where: roomFilter }),
+    prisma.maintenanceLog.findMany({
+      where: { isSupplyIntake: false, maintenanceDate: { gte: from, lte: to }, ...roomFilter },
+      include: { room: true },
+      orderBy: [{ maintenanceDate: 'desc' }, { createdAt: 'desc' }],
+    }),
+  ])
+
+  const filteredRooms = roomIds?.length ? rooms.filter(r => roomIds.includes(r.id)) : rooms
+  const errorMachines = allMachines.filter(m => ERROR_FIELDS.some(f => (m as Record<string, unknown>)[f] != null && (m as Record<string, unknown>)[f] !== ''))
+  const goodCount = allMachines.length - errorMachines.length
+
+  addTitle(ws, `Báo cáo hôm nay — ${fmtDate(from)}`, 5)
+
+  ws.addRow(['Tổng máy tính:', allMachines.length, '', 'Bảo trì hôm nay:', logs.length])
+  ws.addRow(['Đang hoạt động:', goodCount, '', 'Đang có lỗi:', errorMachines.length])
+  ws.addRow([])
+
+  ws.columns = [
+    { key: 'a', width: 14 }, { key: 'b', width: 14 }, { key: 'c', width: 12 },
+    { key: 'd', width: 40 }, { key: 'e', width: 30 },
+  ]
+
+  if (errorMachines.length > 0) {
+    const h1 = ws.addRow(['Máy đang có lỗi'])
+    ws.mergeCells(h1.number, 1, h1.number, 5)
+    styleHeader(h1)
+    const s1 = ws.addRow(['Phòng', 'Tầng', 'Số máy', 'Loại lỗi', 'Ghi chú KTV'])
+    styleSubHeader(s1)
+    for (const m of errorMachines) {
+      const room = rooms.find(r => r.id === m.roomId)
+      if (!room) continue
+      const types = ERROR_FIELDS
+        .filter(f => (m as Record<string, unknown>)[f] != null && (m as Record<string, unknown>)[f] !== '')
+        .map(f => ERROR_LABELS[f] ?? f).join(', ')
+      ws.addRow([room.roomCode, room.floor.name, `Máy ${m.machineNo}${m.isTeacher ? ' (GV)' : ''}`, types, m.extraNotes ?? ''])
+    }
+    ws.addRow([])
+  }
+
+  if (logs.length > 0) {
+    const h2 = ws.addRow(['Nhật ký bảo trì hôm nay'])
+    ws.mergeCells(h2.number, 1, h2.number, 5)
+    styleHeader(h2)
+    const s2 = ws.addRow(['Ngày', 'Phòng', 'Kỹ thuật viên', 'Ghi chú', ''])
+    styleSubHeader(s2)
+    for (const m of logs) {
+      ws.addRow([fmtDate(m.maintenanceDate), m.room?.roomCode ?? '—', m.technicianName ?? '—', m.notes ?? '', ''])
+    }
+    ws.addRow([])
+  }
+
+  const h3 = ws.addRow(['Tình trạng theo phòng'])
+  ws.mergeCells(h3.number, 1, h3.number, 5)
+  styleHeader(h3)
+  const s3 = ws.addRow(['Phòng', 'Tầng', 'Tổng máy', 'Máy lỗi', 'Tỉ lệ (%)'])
+  styleSubHeader(s3)
+  for (const room of filteredRooms) {
+    const machines = allMachines.filter(m => m.roomId === room.id)
+    const errCount = machines.filter(m => ERROR_FIELDS.some(f => (m as Record<string, unknown>)[f] != null && (m as Record<string, unknown>)[f] !== '')).length
+    const row = ws.addRow([room.roomCode, room.floor.name, machines.length, errCount, machines.length > 0 ? Math.round(errCount / machines.length * 1000) / 10 : 0])
+    if (errCount > 0) row.getCell(5).font = { color: { argb: 'FFDC2626' } }
+  }
+}
+
 // ── GET handler ───────────────────────────────────────────────────────────────
 export async function GET(req: NextRequest) {
   const auth = await requireRole(req, 'ADMIN', 'MANAGER')
   if (!auth) return Response.json({ error: 'Không có quyền' }, { status: 403 })
 
   const { searchParams } = req.nextUrl
-  const type      = searchParams.get('type') ?? 'machines'
-  const roomIdStr = searchParams.get('roomId')
-  const techIdStr = searchParams.get('technicianId')
-  const roomId    = roomIdStr ? Number(roomIdStr) : undefined
-  const techId    = techIdStr ? Number(techIdStr) : undefined
+  const type       = searchParams.get('type') ?? 'machines'
+  const roomIdsStr = searchParams.get('roomIds')
+  const techIdStr  = searchParams.get('technicianId')
+  const roomIds    = roomIdsStr ? roomIdsStr.split(',').filter(Boolean).map(Number).filter(n => !isNaN(n) && n > 0) : undefined
+  const techId     = techIdStr ? Number(techIdStr) : undefined
 
   const dr = parseDateRange(searchParams)
   if ('error' in dr) return Response.json({ error: dr.error }, { status: 400 })
@@ -289,7 +377,7 @@ export async function GET(req: NextRequest) {
   switch (type) {
     case 'machines': {
       const ws = wb.addWorksheet('Máy lỗi')
-      await buildMachinesSheet(ws, from, to, roomId)
+      await buildMachinesSheet(ws, from, to, roomIds)
       break
     }
     case 'supply': {
@@ -299,12 +387,17 @@ export async function GET(req: NextRequest) {
     }
     case 'parts-usage': {
       const ws = wb.addWorksheet('Linh kiện')
-      await buildPartsSheet(ws, from, to, roomId)
+      await buildPartsSheet(ws, from, to, roomIds)
       break
     }
     case 'recall-kpi': {
       const ws = wb.addWorksheet('KPI Thu hồi')
       await buildKpiSheet(ws, from, to, techId)
+      break
+    }
+    case 'daily': {
+      const ws = wb.addWorksheet('Hôm nay')
+      await buildDailySheet(ws, from, to, roomIds)
       break
     }
     case 'all': {
@@ -314,14 +407,14 @@ export async function GET(req: NextRequest) {
         wb.addWorksheet('Linh kiện'),
         wb.addWorksheet('KPI Thu hồi'),
       ]
-      await Promise.all([buildMachinesSheet(ws1, from, to), buildSupplySheet(ws2, from, to), buildPartsSheet(ws3, from, to), buildKpiSheet(ws4, from, to)])
+      await Promise.all([buildMachinesSheet(ws1, from, to, roomIds), buildSupplySheet(ws2, from, to), buildPartsSheet(ws3, from, to, roomIds), buildKpiSheet(ws4, from, to)])
       break
     }
     default:
       return Response.json({ error: 'type không hợp lệ' }, { status: 400 })
   }
 
-  const typeLabel: Record<string, string> = { machines: 'may-loi', supply: 'kho', 'parts-usage': 'linh-kien', 'recall-kpi': 'kpi-thu-hoi', all: 'toan-bo' }
+  const typeLabel: Record<string, string> = { machines: 'may-loi', supply: 'kho', 'parts-usage': 'linh-kien', 'recall-kpi': 'kpi-thu-hoi', all: 'toan-bo', daily: 'hom-nay' }
   const filename = `bao-cao-${typeLabel[type] ?? type}-${from.toISOString().slice(0, 10)}_${to.toISOString().slice(0, 10)}.xlsx`
 
   const buf = await wb.xlsx.writeBuffer()

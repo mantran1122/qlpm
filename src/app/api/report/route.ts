@@ -84,12 +84,13 @@ function parseDateRange(params: URLSearchParams): ParseResult {
 }
 
 // ── Báo cáo máy lỗi ──────────────────────────────────────────────────────────
-async function reportMachines(from: Date, to: Date, roomId?: number) {
+async function reportMachines(from: Date, to: Date, roomIds?: number[]) {
+  const roomFilter = roomIds?.length ? { roomId: { in: roomIds } } : {}
   const [rooms, allMachines, maintenanceLogs, supplyIntake, supplyUsage] = await Promise.all([
     prisma.room.findMany({ include: { floor: true }, orderBy: [{ floorId: 'asc' }, { roomCode: 'asc' }] }),
-    roomId ? prisma.machine.findMany({ where: { roomId } }) : prisma.machine.findMany(),
+    prisma.machine.findMany({ where: roomFilter }),
     prisma.maintenanceLog.findMany({
-      where: { isSupplyIntake: false, maintenanceDate: { gte: from, lte: to }, ...(roomId ? { roomId } : {}) },
+      where: { isSupplyIntake: false, maintenanceDate: { gte: from, lte: to }, ...roomFilter },
       include: { room: true },
       orderBy: { maintenanceDate: 'desc' },
     }),
@@ -103,7 +104,7 @@ async function reportMachines(from: Date, to: Date, roomId?: number) {
     }),
   ])
 
-  const filteredRooms = roomId ? rooms.filter(r => r.id === roomId) : rooms
+  const filteredRooms = roomIds?.length ? rooms.filter(r => roomIds.includes(r.id)) : rooms
   const roomRows = filteredRooms.map(room => {
     const machines  = allMachines.filter(m => m.roomId === room.id)
     const errorCount = machines.filter(m => ERROR_FIELDS.some(f => m[f] != null && m[f] !== '')).length
@@ -215,12 +216,12 @@ async function reportSupply(from: Date, to: Date) {
 }
 
 // ── Báo cáo linh kiện sử dụng ────────────────────────────────────────────────
-async function reportPartsUsage(from: Date, to: Date, roomId?: number) {
+async function reportPartsUsage(from: Date, to: Date, roomIds?: number[]) {
   const logs = await prisma.maintenanceLog.findMany({
     where: {
       isSupplyIntake: false,
       maintenanceDate: { gte: from, lte: to },
-      ...(roomId ? { roomId } : {}),
+      ...(roomIds?.length ? { roomId: { in: roomIds } } : {}),
       OR: SUPPLY_FIELDS.map(f => ({ [f]: { gt: 0 } })),
     },
     include: { room: true },
@@ -402,9 +403,9 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = req.nextUrl
   const type       = searchParams.get('type')
-  const roomIdStr  = searchParams.get('roomId')
+  const roomIdsStr = searchParams.get('roomIds')
   const techIdStr  = searchParams.get('technicianId')
-  const roomId     = roomIdStr ? Number(roomIdStr) : undefined
+  const roomIds    = roomIdsStr ? roomIdsStr.split(',').filter(Boolean).map(Number).filter(n => !isNaN(n) && n > 0) : undefined
   const techId     = techIdStr ? Number(techIdStr) : undefined
 
   // Legacy mode: no type param → original behavior (backward compat với trang in báo cáo cũ)
@@ -493,7 +494,7 @@ export async function GET(req: NextRequest) {
 
   switch (type) {
     case 'machines': {
-      const data = await reportMachines(from, to, roomId)
+      const data = await reportMachines(from, to, roomIds)
       return Response.json({ type: 'machines', period, generatedAt: new Date().toISOString(), ...data })
     }
     case 'supply': {
@@ -501,7 +502,7 @@ export async function GET(req: NextRequest) {
       return Response.json({ type: 'supply', period, generatedAt: new Date().toISOString(), ...data })
     }
     case 'parts-usage': {
-      const data = await reportPartsUsage(from, to, roomId)
+      const data = await reportPartsUsage(from, to, roomIds)
       return Response.json({ type: 'parts-usage', period, generatedAt: new Date().toISOString(), ...data })
     }
     case 'recall-kpi': {
