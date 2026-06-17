@@ -822,7 +822,7 @@ export default function RoomDetailPage({ params }: { params: Promise<{ room: str
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <h2 style={{ margin: 0, fontSize: 42, fontWeight: 800, letterSpacing: '-.02em' }}>Phòng {roomData.roomCode}</h2>
+              <h2 className="room-title" style={{ margin: 0, fontSize: 42, fontWeight: 800, letterSpacing: '-.02em' }}>Phòng {roomData.roomCode}</h2>
               <Badge tone="info" icon="rooms">{roomData.floor.name}</Badge>
             </div>
             <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', marginTop: 14 }}>
@@ -857,8 +857,8 @@ export default function RoomDetailPage({ params }: { params: Promise<{ room: str
         </div>
       </Card>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-        <Card pad={24} style={{ display: 'flex', flexDirection: 'column' }}>
+      <div className="room-cards">
+        <Card pad={24} style={{ display: 'flex', flexDirection: 'column', overflow: 'visible' }}>
           <CardHead title="Sơ đồ máy tính"
             action={
               <Button size="sm" variant={isBulkMode ? 'primary' : 'outline'} icon="check" onClick={() => { setIsBulkMode(!isBulkMode); setSelectedIds(new Set()) }}>
@@ -909,7 +909,7 @@ export default function RoomDetailPage({ params }: { params: Promise<{ room: str
               </Button>
             </div>
           )}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 8, marginTop: 18 }}>
+          <div className="machine-grid">
             {[...machines].sort((a, b) => (b.isTeacher ? 1 : 0) - (a.isTeacher ? 1 : 0) || a.id - b.id).map(m =>
               <MachineCell
                 key={m.dbId}
@@ -945,14 +945,13 @@ export default function RoomDetailPage({ params }: { params: Promise<{ room: str
           </div>
         </Card>
 
-        <Card pad={22} style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
+        <Card pad={22} style={{ display: 'flex', flexDirection: 'column', minHeight: 280 }}>
           <CardHead title="Lịch sử bảo trì phòng này" />
-          <div style={{ flex: 1, position: 'relative', minHeight: 0 }}>
-            <div style={{ position: 'absolute', inset: 0, overflowY: 'auto' }}>
+          <div className="history-scroll">
               {roomData.maintenanceLogs.length === 0 ? (
                 <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-faint)', fontSize: 13 }}>Chưa có bản ghi bảo trì.</div>
               ) : (
-                <table className="tbl">
+                <table className="tbl history-tbl">
                   <thead><tr><th>Mã</th><th>Loại</th><th>Ngày</th><th>Người thực hiện</th><th>Ghi chú</th><th style={{ textAlign: 'center' }}>Lỗi trước</th>{isAdmin && <th />}</tr></thead>
                   <tbody>
                     {roomData.maintenanceLogs.map(m => {
@@ -1004,7 +1003,6 @@ export default function RoomDetailPage({ params }: { params: Promise<{ room: str
                   </tbody>
                 </table>
               )}
-            </div>
           </div>
         </Card>
       </div>

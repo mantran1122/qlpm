@@ -258,6 +258,40 @@ html.dark .dim-overlay { background:rgba(0,0,0,.58); }
 @media (max-width:920px)  { .grid-chart,.grid-2 { grid-template-columns:1fr; } }
 @media (max-width:640px)  { .grid-kpi,.grid-3 { grid-template-columns:1fr; } }
 
+/* ===== Room detail ===== */
+.machine-grid  { display:grid; grid-template-columns:repeat(8,1fr); gap:8px; margin-top:18px; }
+.room-cards    { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+.history-scroll { flex:1; min-height:0; overflow-y:auto; }
+
+/* ≤920px: stack cards, shrink padding, disable hover scale (dùng active thay) */
+@media (max-width:920px) {
+  .room-cards    { grid-template-columns:1fr; }
+  .room-title    { font-size:clamp(22px,7vw,36px) !important; }
+  .history-scroll { flex:none; max-height:380px; }
+  main           { padding:14px !important; }
+  .mcell:hover   { transform:none; box-shadow:none; filter:none; }
+  .mcell:active  { transform:scale(.92); filter:brightness(1.12); }
+}
+/* ≤640px: giảm font mcell cho cell nhỏ hơn */
+@media (max-width:640px) {
+  .mcell { font-size:14px !important; }
+}
+/* ≤500px: 7 cột — cell ~52px trên 375px phone */
+@media (max-width:500px) {
+  .machine-grid { grid-template-columns:repeat(7,1fr); gap:6px; }
+  .mcell        { font-size:13px !important; border-radius:6px !important; }
+}
+/* ≤400px: 6 cột — cell ~46px trên 375px phone */
+@media (max-width:400px) {
+  .machine-grid { grid-template-columns:repeat(6,1fr); gap:5px; }
+  .mcell        { font-size:12px !important; border-radius:5px !important; }
+}
+/* ≤560px: ẩn cột ít dùng trong bảng lịch sử */
+@media (max-width:560px) {
+  .history-tbl th:nth-child(4), .history-tbl td:nth-child(4),
+  .history-tbl th:nth-child(6), .history-tbl td:nth-child(6) { display:none; }
+}
+
 /* ===== Table ===== */
 table.tbl { width:100%; border-collapse:collapse; }
 table.tbl th { text-align:left; font-size:15.5px; font-weight:600; color:var(--text-faint); text-transform:uppercase; letter-spacing:.04em; padding:13px 14px 11px; }
@@ -816,18 +850,15 @@ html.dark .login-google-btn {
 .login-brand-panel {
   min-height: 100vh;
   max-width: none;
-  display: grid;
-  grid-template-columns: minmax(280px, 430px) minmax(320px, 1fr);
-  align-items: center;
-  gap: clamp(22px, 3vw, 48px);
-  padding: clamp(42px, 5vw, 76px) clamp(34px, 5.4vw, 88px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(60px, 8vw, 100px) clamp(34px, 5.4vw, 88px) clamp(42px, 5vw, 76px);
   background: #fff;
 }
 
 .login-brand-mark {
-  position: absolute;
-  top: 48px;
-  left: clamp(34px, 5.4vw, 88px);
+  margin-bottom: clamp(28px, 3.5vw, 48px);
 }
 
 .login-school-logo {
@@ -870,10 +901,7 @@ html.dark .login-google-btn {
 }
 
 .login-visual-stack {
-  position: relative;
-  width: min(100%, 520px);
-  height: 580px;
-  justify-self: center;
+  display: none;
 }
 
 .login-circle-card {
@@ -1075,7 +1103,7 @@ html.dark .login-google-btn {
 
   .login-brand-panel {
     min-height: auto;
-    grid-template-columns: 1fr;
+    align-items: center;
     padding: 34px 24px 18px;
     text-align: center;
   }
@@ -1115,29 +1143,7 @@ html.dark .login-google-btn {
 
 @media (max-width: 640px) {
   .login-brand-panel {
-    display: block;
-  }
-
-  .login-brand-mark {
-    display: block;
-    margin-bottom: 16px;
-  }
-
-  .login-school-logo {
-    width: 180px;
-  }
-
-  .login-hero-copy h1 {
-    font-size: 42px;
-  }
-
-  .login-kicker {
-    margin-bottom: 12px;
-    font-size: 14px;
-  }
-
-  .login-intro {
-    font-size: 15px;
+    display: none;
   }
 
   .login-mobile-brand {

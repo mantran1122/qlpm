@@ -148,7 +148,7 @@ function RecordSheet({ open, onClose, onSaved, rooms, editLog, isKtv }: {
   const [saving, setSaving] = useState(false)
   const [errMsg, setErrMsg] = useState('')
   const [techs, setTechs] = useState<Tech[]>([])
-  const [selectedMachineId, setSelectedMachineId] = useState<number>(0)
+  const [selectedMachineIds, setSelectedMachineIds] = useState<Set<number>>(new Set())
   const [availableMachines, setAvailableMachines] = useState<ApiMachine[]>([])
 
   const currentRoom = room || (rooms[0]?.roomCode ?? '')
@@ -161,7 +161,7 @@ function RecordSheet({ open, onClose, onSaved, rooms, editLog, isKtv }: {
       setRoom(editLog.room?.roomCode ?? '')
       setTechId(editLog.technicianId ?? 0)
       setDate(editLog.maintenanceDate.slice(0, 10))
-      setSelectedMachineId(editLog.machineId ?? 0)
+      setSelectedMachineIds(editLog.machineId ? new Set([editLog.machineId]) : new Set())
       const q: Record<string, string> = {}
       for (const { field, key } of QTY_MAP) { const v = editLog[field] as number; if (v > 0) q[key] = String(v) }
       setQty(q)
@@ -172,7 +172,7 @@ function RecordSheet({ open, onClose, onSaved, rooms, editLog, isKtv }: {
       setAfter(String(editLog.softwareErrorsAfter + editLog.hardwareErrorsAfter || ''))
       setNote(editLog.notes ?? '')
     } else {
-      setMode('bt'); setRoom(''); setTechId(0); setSelectedMachineId(0)
+      setMode('bt'); setRoom(''); setTechId(0); setSelectedMachineIds(new Set())
       setDate(new Date().toISOString().slice(0, 10))
       setQty({}); setRecQty({}); setBefore(''); setAfter(''); setNote('')
     }
@@ -198,35 +198,43 @@ function RecordSheet({ open, onClose, onSaved, rooms, editLog, isKtv }: {
   const roomOpts = useMemo(() => rooms.map(r => ({ value: r.roomCode, label: r.roomCode })), [rooms])
   const firstRoom = rooms[0]?.roomCode ?? ''
 
-  const machineOpts = useMemo(() => [
-    { value: '0', label: '— Không liên quan máy cụ thể —' },
-    ...availableMachines.map(m => ({ value: String(m.id), label: `Máy ${m.machineNo}${m.isTeacher ? ' (GV)' : ''}` })),
-  ], [availableMachines])
+  const buildBody = (machine: ApiMachine | null | undefined) => {
+    const body: Record<string, unknown> = {
+      isSupplyIntake: mode === 'nk',
+      maintenanceDate: date,
+      notes: note,
+      softwareErrorsBefore: +(before || 0),
+      softwareErrorsAfter: +(after || 0),
+      hardwareErrorsBefore: 0,
+      hardwareErrorsAfter: 0,
+      technicianId: techId > 0 ? techId : null,
+      technicianName: techId > 0 ? (techs.find(t => t.id === techId)?.name ?? '') : null,
+      machineId: machine?.id ?? null,
+      machineNo: machine?.machineNo ?? null,
+    }
+    if (mode === 'bt') body.roomCode = currentRoom || firstRoom
+    for (const { field, key } of QTY_MAP) body[field] = +(qty[key] || 0)
+    for (const { field, key } of REC_QTY_MAP) body[field] = +(recQty[key] || 0)
+    return body
+  }
 
   const handleSave = async () => {
     setSaving(true); setErrMsg('')
     try {
-      const selectedMachine = availableMachines.find(m => m.id === selectedMachineId)
-      const body: Record<string, unknown> = {
-        isSupplyIntake: mode === 'nk',
-        maintenanceDate: date,
-        notes: note,
-        softwareErrorsBefore: +(before || 0),
-        softwareErrorsAfter: +(after || 0),
-        hardwareErrorsBefore: 0,
-        hardwareErrorsAfter: 0,
-        technicianId: techId > 0 ? techId : null,
-        technicianName: techId > 0 ? (techs.find(t => t.id === techId)?.name ?? '') : null,
-        machineId: selectedMachineId > 0 ? selectedMachineId : null,
-        machineNo: selectedMachine ? selectedMachine.machineNo : null,
+      if (isEdit) {
+        const machineId = selectedMachineIds.size > 0 ? [...selectedMachineIds][0] : null
+        const machine = machineId ? availableMachines.find(m => m.id === machineId) : null
+        const res = await csrfFetch(`/api/maintenance/${editLog!.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(buildBody(machine)) })
+        if (!res.ok) { const d = await res.json().catch(() => ({})); setErrMsg(d.error ?? 'Lỗi khi lưu'); return }
+      } else {
+        const machineTargets = selectedMachineIds.size > 0
+          ? availableMachines.filter(m => selectedMachineIds.has(m.id))
+          : [null]
+        for (const machine of machineTargets) {
+          const res = await csrfFetch('/api/maintenance', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(buildBody(machine)) })
+          if (!res.ok) { const d = await res.json().catch(() => ({})); setErrMsg(d.error ?? 'Lỗi khi lưu'); return }
+        }
       }
-      if (mode === 'bt') body.roomCode = currentRoom || firstRoom
-      for (const { field, key } of QTY_MAP) body[field] = +(qty[key] || 0)
-      for (const { field, key } of REC_QTY_MAP) body[field] = +(recQty[key] || 0)
-
-      const url = isEdit ? `/api/maintenance/${editLog!.id}` : '/api/maintenance'
-      const res = await csrfFetch(url, { method: isEdit ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-      if (!res.ok) { const d = await res.json().catch(() => ({})); setErrMsg(d.error ?? 'Lỗi khi lưu'); return }
       onSaved(); onClose()
     } finally { setSaving(false) }
   }
@@ -262,7 +270,7 @@ function RecordSheet({ open, onClose, onSaved, rooms, editLog, isKtv }: {
         <div style={{ display: 'grid', gridTemplateColumns: mode === 'bt' ? '1fr 1fr' : '1fr', gap: 12 }}>
           {mode === 'bt' && (
             <Field label="Phòng máy">
-              <Select value={currentRoom} onChange={v => { setRoom(v); setSelectedMachineId(0) }} options={roomOpts} style={{ width: '100%' }} />
+              <Select value={currentRoom} onChange={v => { setRoom(v); setSelectedMachineIds(new Set()) }} options={roomOpts} style={{ width: '100%' }} />
             </Field>
           )}
           <Field label="Ngày">
@@ -270,9 +278,20 @@ function RecordSheet({ open, onClose, onSaved, rooms, editLog, isKtv }: {
           </Field>
         </div>
 
-        {mode === 'bt' && (
-          <Field label="Máy liên quan (tuỳ chọn)">
-            <Select value={String(selectedMachineId)} onChange={v => setSelectedMachineId(+v)} options={machineOpts} style={{ width: '100%' }} />
+        {mode === 'bt' && availableMachines.length > 0 && (
+          <Field label={`Máy liên quan${selectedMachineIds.size > 0 ? ` · ${selectedMachineIds.size} đã chọn` : ' (tuỳ chọn)'}`}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(66px, 1fr))', gap: 6, maxHeight: 148, overflowY: 'auto', padding: 2 }}>
+              {availableMachines.map(m => {
+                const checked = selectedMachineIds.has(m.id)
+                return (
+                  <button key={m.id} type="button"
+                    onClick={() => setSelectedMachineIds(prev => { const s = new Set(prev); s.has(m.id) ? s.delete(m.id) : s.add(m.id); return s })}
+                    style={{ padding: '6px 4px', borderRadius: 8, border: `1.5px solid ${checked ? 'var(--primary)' : 'var(--border-strong)'}`, background: checked ? 'color-mix(in srgb, var(--primary) 12%, var(--surface))' : 'var(--surface-2)', color: checked ? 'var(--primary)' : 'var(--text-muted)', fontSize: 12, fontWeight: 700, cursor: 'pointer', textAlign: 'center', lineHeight: 1.3, transition: 'all .12s ease' }}>
+                    {m.isTeacher ? 'GV' : `M${m.machineNo}`}
+                  </button>
+                )
+              })}
+            </div>
           </Field>
         )}
 
@@ -314,7 +333,7 @@ function RecordSheet({ open, onClose, onSaved, rooms, editLog, isKtv }: {
         <span style={{ fontSize: 12.5, color: 'var(--text-faint)' }}>{totalQty > 0 ? `${totalQty} linh kiện` : 'Chưa nhập số lượng'}</span>
         <div style={{ display: 'flex', gap: 10 }}>
           <Button variant="outline" onClick={onClose}>Hủy</Button>
-          <Button variant="primary" icon={isEdit ? 'edit' : 'save'} onClick={handleSave} disabled={saving}>{saving ? 'Đang lưu…' : (isEdit ? 'Cập nhật' : 'Lưu bản ghi')}</Button>
+          <Button variant="primary" icon={isEdit ? 'edit' : 'save'} onClick={handleSave} disabled={saving}>{saving ? 'Đang lưu…' : isEdit ? 'Cập nhật' : selectedMachineIds.size > 1 ? `Lưu ${selectedMachineIds.size} bản ghi` : 'Lưu bản ghi'}</Button>
         </div>
       </div>
     </Sheet>

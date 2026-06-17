@@ -45,9 +45,16 @@ export async function POST(req: NextRequest) {
   const now = new Date()
   const today = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()))
 
-  // Chỉ xử lý máy đang thực sự lỗi
+  // Xử lý máy có isFaulty=true HOẶC có bất kỳ trường lỗi nào được set
+  // (tránh trường hợp isFaulty không đồng bộ với error fields)
   const faultyMachines = await prisma.machine.findMany({
-    where: { id: { in: body.ids }, isFaulty: true },
+    where: {
+      id: { in: body.ids },
+      OR: [
+        { isFaulty: true },
+        ...ERROR_FIELDS.map(f => ({ [f]: { not: null } })),
+      ],
+    },
     select: { id: true, machineNo: true, isTeacher: true, roomId: true },
   })
 
