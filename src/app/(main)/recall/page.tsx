@@ -255,6 +255,20 @@ export default function RecallPage() {
   const { data: resp, loading, error, refetch } = useFetch<PaginatedRecalls>(apiUrl)
   const handleSaved = useCallback(() => { refetch(); setPage(1) }, [refetch])
 
+  if (loading) return (
+    <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-faint)', fontSize: 14 }}>
+      <Icon name="refresh" size={28} style={{ marginBottom: 12, opacity: 0.4, animation: 'spin 1s linear infinite', display: 'block', margin: '0 auto 12px' }} />
+      <div>Đang tải dữ liệu...</div>
+    </div>
+  )
+  if (error) return (
+    <div style={{ padding: 60, textAlign: 'center' }}>
+      <Icon name="alert" size={28} style={{ color: 'var(--err)', display: 'block', margin: '0 auto 12px' }} />
+      <div style={{ color: 'var(--err-tx)', fontSize: 14, marginBottom: 16 }}>Không tải được dữ liệu. Vui lòng thử lại.</div>
+      <Button variant="outline" size="sm" onClick={() => refetch()} icon="refresh">Thử lại</Button>
+    </div>
+  )
+
   const records    = resp?.data ?? []
   const total      = resp?.total ?? 0
   const totalPages = resp?.totalPages ?? 1

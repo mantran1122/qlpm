@@ -6,7 +6,7 @@ import { Progress } from '@/components/app/charts'
 import { toast } from 'sonner'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
-type TabKey = 'machines' | 'supply' | 'parts-usage' | 'recall-kpi'
+type TabKey = 'machines' | 'supply' | 'parts-usage' | 'recall-kpi' | 'daily'
 
 interface Period { from: string; to: string }
 
@@ -37,7 +37,17 @@ interface RecallKpiReport {
   data: { technicianId: number; technicianName: string; totalRecalls: number; recallsByType: Record<string, number>; totalRepairsCompleted: number; repairsInProgress: number; repairsNotStarted: number; avgRepairMinutes: number | null; minRepairMinutes: number | null; maxRepairMinutes: number | null; avgResponseMinutes: number | null }[]
 }
 
-type ReportData = MachinesReport | SupplyReport | PartsUsageReport | RecallKpiReport
+interface DailyReport {
+  type: 'daily'; period: Period; generatedAt: string
+  summary: { totalMachines: number; goodMachines: number; errorMachines: number; maintenanceToday: number }
+  errorMachinesList: { roomCode: string; floor: string; machineNo: number; isTeacher: boolean; errorTypes: string[]; technicianNote: string | null }[]
+  maintenanceLogs: { id: number; date: string; room: string; technicianName: string; notes: string }[]
+  floorStats: { floor: string; total: number; errors: number; sw: number; hw: number; rate: number }[]
+  byRoom: { roomCode: string; floor: string; totalMachines: number; errorMachines: number; goodMachines: number }[]
+  supplies: { type: string; label: string; intake: number; used: number; balance: number; pct: number }[]
+}
+
+type ReportData = MachinesReport | SupplyReport | PartsUsageReport | RecallKpiReport | DailyReport
 
 interface Room { id: number; roomCode: string }
 interface Technician { id: number; name: string }
@@ -71,6 +81,7 @@ function PeriodSelector({ period, setPeriod, from, setFrom, to, setTo }: {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
       <select value={period} onChange={e => setPeriod(e.target.value)} style={sel}>
+        <option value="today">Hôm nay</option>
         <option value="month">Tháng này</option>
         <option value="week">7 ngày qua</option>
         <option value="quarter">Quý này</option>
@@ -118,7 +129,7 @@ function TabMachines({ data }: { data: MachinesReport }) {
               <div key={r.roomCode} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <Badge tone="info" style={{ width: 56, flexShrink: 0, justifyContent: 'center' }}>{r.roomCode}</Badge>
                 <div style={{ flex: 1 }}>
-                  <Progress value={maxErr > 0 ? (r.errorCount / maxErr) * 100 : 0} tone={r.errorRate > 30 ? 'var(--err)' : r.errorRate > 10 ? 'var(--both)' : 'var(--soft)'} height={7} />
+                  <Progress value={maxErr > 0 ? (r.errorCount / maxErr) * 100 : 0} tone={r.errorRate > 30 ? 'var(--err)' : r.errorRate > 10 ? 'var(--err)' : 'var(--soft)'} height={7} />
                 </div>
                 <span style={{ width: 80, textAlign: 'right', fontSize: 13, fontWeight: 600, color: r.errorRate > 20 ? 'var(--err-tx)' : 'var(--text)', flexShrink: 0 }}>
                   {r.errorCount}/{r.totalMachines} ({r.errorRate}%)
@@ -151,6 +162,26 @@ function TabMachines({ data }: { data: MachinesReport }) {
           )}
         </Card>
       </div>
+
+      {/* Floor stats */}
+      {data.floorStats.length > 0 && (
+        <Card pad={22}>
+          <CardHead title="So sánh theo tầng" sub={`${data.floorStats.length} tầng`} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {data.floorStats.map(f => (
+              <div key={f.floor} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ width: 64, fontWeight: 600, fontSize: 13, flexShrink: 0 }}>{f.floor}</span>
+                <div style={{ flex: 1 }}>
+                  <Progress value={f.total > 0 ? (f.errors / f.total) * 100 : 0} tone={f.rate > 30 ? 'var(--err)' : f.rate > 10 ? 'var(--soft)' : 'var(--good)'} height={7} />
+                </div>
+                <span style={{ width: 120, textAlign: 'right', fontSize: 12.5, flexShrink: 0 }}>
+                  {f.errors}/{f.total} máy lỗi ({f.rate}%)
+                </span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* Maintenance logs table */}
       {data.maintenanceLogs.length > 0 && (
@@ -203,7 +234,7 @@ function TabSupply({ data }: { data: SupplyReport }) {
           { l: 'Loại vật tư',        v: s.totalTypes,                              tone: 'info' },
           { l: 'Loại sắp hết (< 30%)',v: s.lowCount,                              tone: 'err' },
           { l: 'Tồn kho tổng',       v: s.totalBalance.toLocaleString('vi-VN'),   tone: 'good' },
-          { l: 'Nhập ròng trong kỳ', v: (s.periodNetTotal >= 0 ? '+' : '') + s.periodNetTotal, tone: s.periodNetTotal >= 0 ? 'soft' : 'both' },
+          { l: 'Nhập ròng trong kỳ', v: (s.periodNetTotal >= 0 ? '+' : '') + s.periodNetTotal, tone: s.periodNetTotal >= 0 ? 'soft' : 'err' },
         ].map(k => (
           <Card key={k.l} pad={20}>
             <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-faint)', marginBottom: 6 }}>{k.l}</div>
@@ -229,10 +260,10 @@ function TabSupply({ data }: { data: SupplyReport }) {
                   <td style={{ padding: '8px 12px', fontWeight: 500 }}>{s.label}</td>
                   <td style={{ padding: '8px 12px', textAlign: 'right' }}>{s.totalIntake}</td>
                   <td style={{ padding: '8px 12px', textAlign: 'right' }}>{s.totalUsed}</td>
-                  <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: s.balance < 0 ? 'var(--err-tx)' : s.pct < 30 ? 'var(--both-tx)' : 'var(--good-tx)' }}>{s.balance}</td>
+                  <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: s.balance < 0 ? 'var(--err-tx)' : s.pct < 30 ? 'var(--soft-tx)' : 'var(--good-tx)' }}>{s.balance}</td>
                   <td style={{ padding: '8px 12px', textAlign: 'right' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
-                      <div style={{ width: 60 }}><Progress value={s.pct} tone={s.pct < 30 ? 'var(--err)' : s.pct < 60 ? 'var(--both)' : 'var(--good)'} height={6} /></div>
+                      <div style={{ width: 60 }}><Progress value={s.pct} tone={s.pct < 30 ? 'var(--err)' : s.pct < 60 ? 'var(--soft)' : 'var(--good)'} height={6} /></div>
                       <span style={{ minWidth: 36, textAlign: 'right' }}>{s.pct}%</span>
                     </div>
                   </td>
@@ -357,7 +388,7 @@ function TabRecallKpi({ data }: { data: RecallKpiReport }) {
         {[
           { l: 'Tổng lần thu hồi', v: totalRecalls,  tone: 'info' },
           { l: 'Đã sửa xong',      v: totalCompleted, tone: 'good' },
-          { l: 'Đang sửa',         v: totalInProg,    tone: 'both' },
+          { l: 'Đang sửa',         v: totalInProg,    tone: 'soft' },
         ].map(k => (
           <Card key={k.l} pad={20}>
             <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-faint)', marginBottom: 6 }}>{k.l}</div>
@@ -385,7 +416,7 @@ function TabRecallKpi({ data }: { data: RecallKpiReport }) {
                   <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>đã xong</div>
                 </div>
                 <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--both-tx)' }}>{tech.repairsInProgress}</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--soft-tx)' }}>{tech.repairsInProgress}</div>
                   <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>đang sửa</div>
                 </div>
                 <div style={{ textAlign: 'center' }}>
@@ -400,13 +431,124 @@ function TabRecallKpi({ data }: { data: RecallKpiReport }) {
 
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                 {tech.recallsByType.RECALL_FOR_REPAIR > 0 && <Badge tone="err">Cần sửa: {tech.recallsByType.RECALL_FOR_REPAIR}</Badge>}
-                {tech.recallsByType.RECALL_STILL_USABLE > 0 && <Badge tone="both">Còn dùng: {tech.recallsByType.RECALL_STILL_USABLE}</Badge>}
+                {tech.recallsByType.RECALL_STILL_USABLE > 0 && <Badge tone="soft">Còn dùng: {tech.recallsByType.RECALL_STILL_USABLE}</Badge>}
                 {tech.recallsByType.RETURN_AFTER_REPAIR > 0 && <Badge tone="good">Trả máy: {tech.recallsByType.RETURN_AFTER_REPAIR}</Badge>}
               </div>
             </div>
           </Card>
         ))}
       </div>
+    </div>
+  )
+}
+
+// ── Tab: Hôm nay ─────────────────────────────────────────────────────────────
+function TabDaily({ data }: { data: DailyReport }) {
+  const s = data.summary
+  return (
+    <div className="stack">
+      {/* KPIs */}
+      <div className="grid-4">
+        {[
+          { l: 'Tổng máy tính',    v: s.totalMachines,     tone: 'info' },
+          { l: 'Đang hoạt động',   v: s.goodMachines,      tone: 'good' },
+          { l: 'Đang có lỗi',      v: s.errorMachines,     tone: 'err'  },
+          { l: 'Bảo trì hôm nay',  v: s.maintenanceToday,  tone: 'soft' },
+        ].map(k => (
+          <Card key={k.l} pad={20}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-faint)', marginBottom: 6 }}>{k.l}</div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: k.tone === 'err' && s.errorMachines > 0 ? 'var(--err-tx)' : k.tone === 'good' ? 'var(--good-tx)' : 'var(--text)' }}>{k.v}</div>
+          </Card>
+        ))}
+      </div>
+
+      {/* Danh sách máy lỗi */}
+      {data.errorMachinesList.length > 0 ? (
+        <Card pad={22}>
+          <CardHead title="Máy đang có lỗi" sub={`${data.errorMachinesList.length} máy`} />
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: 'var(--surface-2)' }}>
+                  {['Phòng', 'Tầng', 'Số máy', 'Loại lỗi', 'Ghi chú KTV'].map(h => (
+                    <th key={h} style={{ padding: '9px 12px', textAlign: 'left', fontWeight: 600, fontSize: 12.5, color: 'var(--text-muted)', whiteSpace: 'nowrap', borderBottom: '1px solid var(--border)' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {data.errorMachinesList.map((m, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ padding: '8px 12px' }}><Badge tone="soft">{m.roomCode}</Badge></td>
+                    <td style={{ padding: '8px 12px', color: 'var(--text-muted)', fontSize: 12 }}>{m.floor}</td>
+                    <td style={{ padding: '8px 12px', fontWeight: 600 }}>Máy {m.machineNo}{m.isTeacher ? ' (GV)' : ''}</td>
+                    <td style={{ padding: '8px 12px' }}>
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                        {m.errorTypes.map(e => <Badge key={e} tone="err" style={{ fontSize: 11 }}>{e}</Badge>)}
+                      </div>
+                    </td>
+                    <td style={{ padding: '8px 12px', color: m.technicianNote ? 'var(--text-muted)' : 'var(--text-faint)', fontSize: 12.5, maxWidth: 200 }}>
+                      {m.technicianNote ?? 'Chưa có ghi chú'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      ) : (
+        <Card pad={40} style={{ textAlign: 'center' }}>
+          <Icon name="checkCircle" size={40} style={{ color: 'var(--good)', marginBottom: 12 }} />
+          <div style={{ color: 'var(--good-tx)', fontSize: 14, fontWeight: 600 }}>Không có máy nào bị lỗi</div>
+        </Card>
+      )}
+
+      {/* So sánh theo tầng */}
+      {data.floorStats.length > 0 && (
+        <Card pad={22}>
+          <CardHead title="Tình trạng theo tầng" />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {data.floorStats.map(f => (
+              <div key={f.floor} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ width: 64, fontWeight: 600, fontSize: 13, flexShrink: 0 }}>{f.floor}</span>
+                <div style={{ flex: 1 }}>
+                  <Progress value={f.total > 0 ? (f.errors / f.total) * 100 : 0} tone={f.rate > 30 ? 'var(--err)' : f.rate > 10 ? 'var(--soft)' : 'var(--good)'} height={7} />
+                </div>
+                <span style={{ width: 130, textAlign: 'right', fontSize: 12.5, flexShrink: 0 }}>
+                  {f.errors}/{f.total} máy lỗi ({f.rate}%)
+                </span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Bảo trì hôm nay */}
+      {data.maintenanceLogs.length > 0 && (
+        <Card pad={22}>
+          <CardHead title="Bảo trì hôm nay" sub={`${data.maintenanceLogs.length} lần bảo trì`} />
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: 'var(--surface-2)' }}>
+                  {['Ngày', 'Phòng', 'Kỹ thuật viên', 'Ghi chú'].map(h => (
+                    <th key={h} style={{ padding: '9px 12px', textAlign: 'left', fontWeight: 600, fontSize: 12.5, color: 'var(--text-muted)', whiteSpace: 'nowrap', borderBottom: '1px solid var(--border)' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {data.maintenanceLogs.map(m => (
+                  <tr key={m.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>{fmtDate(m.date)}</td>
+                    <td style={{ padding: '8px 12px' }}><Badge tone="soft">{m.room}</Badge></td>
+                    <td style={{ padding: '8px 12px', color: 'var(--text-muted)' }}>{m.technicianName}</td>
+                    <td style={{ padding: '8px 12px', color: 'var(--text-muted)', maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.notes}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
     </div>
   )
 }
@@ -432,8 +574,11 @@ export default function ReportsPage() {
   }, [])
 
   const buildParams = useCallback(() => {
-    const p = new URLSearchParams({ type: tab, period })
-    if (period === 'custom') {
+    // "Hôm nay" → dùng type=daily, period=day
+    const effectiveType   = period === 'today' ? 'daily' : tab
+    const effectivePeriod = period === 'today' ? 'day'   : period
+    const p = new URLSearchParams({ type: effectiveType, period: effectivePeriod })
+    if (effectivePeriod === 'custom') {
       if (from) p.set('from', from)
       if (to)   p.set('to', to)
     }
@@ -451,7 +596,7 @@ export default function ReportsPage() {
       .then(setData)
       .catch(() => toast.error('Không tải được dữ liệu báo cáo'))
       .finally(() => setLoading(false))
-  }, [tab, tick]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tab, period, tick]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleApply = () => setTick(t => t + 1)
 
@@ -479,6 +624,7 @@ export default function ReportsPage() {
     { key: 'supply',      label: 'Kho vật tư',       icon: 'supplies' },
     { key: 'parts-usage', label: 'Linh kiện xuất',   icon: 'box'      },
     { key: 'recall-kpi',  label: 'KPI Thu hồi',      icon: 'recall'   },
+    { key: 'daily',       label: 'Hôm nay',          icon: 'calendar' },
   ]
 
   const sel: React.CSSProperties = { height: 36, border: '1px solid var(--border-strong)', borderRadius: 9, padding: '0 10px', fontFamily: 'var(--font)', fontSize: 13, background: 'var(--surface)', color: 'var(--text)' }
@@ -489,8 +635,12 @@ export default function ReportsPage() {
       <Card pad={18}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
           {TABS.map(t => (
-            <button key={t.key} onClick={() => { setTab(t.key); setFilterRoom(''); setFilterTech('') }}
-              className={`filter-chip ${tab === t.key ? 'active' : ''}`}
+            <button key={t.key}
+              onClick={() => {
+                setTab(t.key); setFilterRoom(''); setFilterTech('')
+                if (t.key === 'daily') setPeriod('today')
+              }}
+              className={`filter-chip ${(t.key === 'daily' ? period === 'today' : tab === t.key && period !== 'today') ? 'active' : ''}`}
               style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <Icon name={t.icon} size={14} />
               {t.label}
@@ -550,6 +700,7 @@ export default function ReportsPage() {
           {data.type === 'supply'      && <TabSupply data={data} />}
           {data.type === 'parts-usage' && <TabPartsUsage data={data} />}
           {data.type === 'recall-kpi'  && <TabRecallKpi data={data} />}
+          {data.type === 'daily'       && <TabDaily data={data} />}
         </>
       )}
     </div>

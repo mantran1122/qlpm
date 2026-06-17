@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { verifyJwtEdge, COOKIE_NAME } from '@/lib/edge/jwt'
+import { verifyJwtEdge, COOKIE_NAME, getSessionMaxAgeSeconds } from '@/lib/edge/jwt'
 import type { UserRole } from '@/lib/edge/jwt'
 
 const PUBLIC_PATHS = ['/login', '/api/auth']
@@ -74,7 +74,7 @@ export async function proxy(req: NextRequest) {
       httpOnly: false,  // JS phải đọc được để gắn vào X-CSRF header
       path: '/',
       sameSite: 'lax',
-      maxAge: 30 * 60,
+      maxAge: getSessionMaxAgeSeconds(payload.role),
       secure: process.env.NODE_ENV === 'production',
     })
   }

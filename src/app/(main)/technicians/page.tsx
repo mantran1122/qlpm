@@ -4,9 +4,9 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useFetch } from '@/lib/use-fetch'
 import { csrfFetch } from '@/lib/csrf'
-import { Card, CardHead, Badge } from '@/components/app/primitives'
+import { Card, CardHead, Badge, Button } from '@/components/app/primitives'
+import { Icon } from '@/components/app/icons'
 import { fmtDate } from '@/lib/app-data'
-import { Loader2 } from 'lucide-react'
 import React from 'react'
 
 interface Technician {
@@ -163,14 +163,19 @@ export default function TechniciansPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}>
-        <Loader2 size={28} style={{ animation: 'spin .7s linear infinite', color: 'var(--text-faint)' }} />
-      </div>
-    )
-  }
-  if (error) return <p style={{ color: 'var(--err-tx)' }}>Lỗi tải dữ liệu</p>
+  if (loading) return (
+    <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-faint)', fontSize: 14 }}>
+      <Icon name="refresh" size={28} style={{ marginBottom: 12, opacity: 0.4, animation: 'spin 1s linear infinite', display: 'block', margin: '0 auto 12px' }} />
+      <div>Đang tải dữ liệu...</div>
+    </div>
+  )
+  if (error) return (
+    <div style={{ padding: 60, textAlign: 'center' }}>
+      <Icon name="alert" size={28} style={{ color: 'var(--err)', display: 'block', margin: '0 auto 12px' }} />
+      <div style={{ color: 'var(--err-tx)', fontSize: 14, marginBottom: 16 }}>Không tải được dữ liệu. Vui lòng thử lại.</div>
+      <Button variant="outline" size="sm" onClick={() => refetch()} icon="refresh">Thử lại</Button>
+    </div>
+  )
 
   return (
     <div className="stack">
@@ -232,8 +237,8 @@ export default function TechniciansPage() {
         {selected && (
           <Card style={{ width: 460, flexShrink: 0, maxHeight: 'calc(100vh - 160px)', overflowY: 'auto' }}>
             {detailLoading ? (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
-                <Loader2 size={24} style={{ animation: 'spin .7s linear infinite', color: 'var(--text-faint)' }} />
+              <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-faint)' }}>
+                <Icon name="refresh" size={24} style={{ opacity: 0.4, animation: 'spin 1s linear infinite', display: 'block', margin: '0 auto' }} />
               </div>
             ) : detail ? (
               <div className="stack" style={{ gap: 18 }}>

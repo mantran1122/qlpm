@@ -23,6 +23,22 @@ const SUPPLY_FIELDS = [
 
 type ParseResult = { from: Date; to: Date } | { error: string }
 
+// Tính midnight theo GMT+7 (Asia/Ho_Chi_Minh) — server chạy UTC
+const VN_OFFSET_MS = 7 * 60 * 60 * 1000
+
+function midnightVN(utcDate: Date): Date {
+  const vnDate = new Date(utcDate.getTime() + VN_OFFSET_MS)
+  // Lấy ngày/tháng/năm theo múi giờ VN
+  const midnightUtc = Date.UTC(vnDate.getUTCFullYear(), vnDate.getUTCMonth(), vnDate.getUTCDate())
+  // Trả về thời điểm midnight VN tính theo UTC
+  return new Date(midnightUtc - VN_OFFSET_MS)
+}
+
+function endOfDayVN(utcDate: Date): Date {
+  const midnight = midnightVN(utcDate)
+  return new Date(midnight.getTime() + 24 * 60 * 60 * 1000 - 1)
+}
+
 function parseDateRange(params: URLSearchParams): ParseResult {
   const period = params.get('period') ?? 'month'
   const now    = new Date()
@@ -37,23 +53,33 @@ function parseDateRange(params: URLSearchParams): ParseResult {
     if (isNaN(from.getTime()) || isNaN(to.getTime())) return { error: 'from/to không hợp lệ' }
     const diff = (to.getTime() - from.getTime()) / (24 * 60 * 60 * 1000)
     if (diff > 365) return { error: 'Khoảng thời gian tối đa 365 ngày' }
+    to = endOfDayVN(to)
   } else {
-    to = new Date(now)
+    to = endOfDayVN(now)
     switch (period) {
       case 'day':
-        from = new Date(now); from.setHours(0, 0, 0, 0); break
-      case 'week':
-        from = new Date(now); from.setDate(now.getDate() - 6); from.setHours(0, 0, 0, 0); break
-      case 'quarter':
-        from = new Date(now); from.setMonth(now.getMonth() - 3); from.setHours(0, 0, 0, 0); break
-      case 'year':
-        from = new Date(now); from.setFullYear(now.getFullYear() - 1); from.setHours(0, 0, 0, 0); break
-      default: // month
-        from = new Date(now.getFullYear(), now.getMonth(), 1)
+        from = midnightVN(now); break
+      case 'week': {
+        const weekAgo = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000)
+        from = midnightVN(weekAgo); break
+      }
+      case 'quarter': {
+        const qAgo = new Date(now)
+        qAgo.setMonth(qAgo.getMonth() - 3)
+        from = midnightVN(qAgo); break
+      }
+      case 'year': {
+        const yAgo = new Date(now)
+        yAgo.setFullYear(yAgo.getFullYear() - 1)
+        from = midnightVN(yAgo); break
+      }
+      default: { // month — ngày đầu tháng theo VN
+        const vnNow = new Date(now.getTime() + VN_OFFSET_MS)
+        from = new Date(Date.UTC(vnNow.getUTCFullYear(), vnNow.getUTCMonth(), 1) - VN_OFFSET_MS)
+      }
     }
   }
 
-  to.setHours(23, 59, 59, 999)
   return { from, to }
 }
 
@@ -289,6 +315,86 @@ async function reportRecallKpi(from: Date, to: Date, technicianId?: number) {
   return { data: stats.filter(s => s.totalRecalls > 0 || s.totalRepairsCompleted > 0 || s.repairsInProgress > 0) }
 }
 
+// ── Báo cáo ngày ─────────────────────────────────────────────────────────────
+async function reportDaily(from: Date, to: Date) {
+  const [rooms, allMachines, maintenanceToday, supplyIntake, supplyUsage] = await Promise.all([
+    prisma.room.findMany({ include: { floor: true }, orderBy: [{ floorId: 'asc' }, { roomCode: 'asc' }] }),
+    prisma.machine.findMany({ include: { room: { include: { floor: true } } } }),
+    prisma.maintenanceLog.findMany({
+      where: { isSupplyIntake: false, maintenanceDate: { gte: from, lte: to } },
+      include: { room: true, technician: true },
+      orderBy: [{ maintenanceDate: 'desc' }, { createdAt: 'desc' }],
+    }),
+    prisma.maintenanceLog.aggregate({
+      where: { isSupplyIntake: true },
+      _sum: { caseQty: true, cpuQty: true, ramQty: true, diskQty: true, powerQty: true, monitorQty: true, monitorCableQty: true, powerCableQty: true, mouseQty: true, networkQty: true, keyboardQty: true },
+    }),
+    prisma.maintenanceLog.aggregate({
+      where: { isSupplyIntake: false },
+      _sum: { caseQty: true, cpuQty: true, ramQty: true, diskQty: true, powerQty: true, monitorQty: true, monitorCableQty: true, powerCableQty: true, mouseQty: true, networkQty: true, keyboardQty: true },
+    }),
+  ])
+
+  const totalMachines = allMachines.length
+  const errorMachines = allMachines.filter(m => ERROR_FIELDS.some(f => m[f] != null && m[f] !== ''))
+  const goodMachines  = totalMachines - errorMachines.length
+
+  const errorMachinesList = errorMachines.map(m => ({
+    roomCode:        m.room?.roomCode ?? '?',
+    floor:           (m.room as { floor?: { name: string } })?.floor?.name ?? '?',
+    machineNo:       m.machineNo,
+    isTeacher:       m.isTeacher,
+    errorTypes:      ERROR_FIELDS.filter(f => m[f] != null && m[f] !== '').map(f => ERROR_LABELS[f] ?? f),
+    technicianNote:  m.extraNotes ?? null,
+  })).sort((a, b) => a.roomCode.localeCompare(b.roomCode) || a.machineNo - b.machineNo)
+
+  const floorMap = new Map<string, { total: number; errors: number; sw: number; hw: number }>()
+  for (const room of rooms) {
+    const machines  = allMachines.filter(m => m.roomId === room.id)
+    const errorCount = machines.filter(m => ERROR_FIELDS.some(f => m[f] != null && m[f] !== '')).length
+    const swCount    = machines.filter(m => m.softwareError != null && m.softwareError !== '').length
+    const hwCount    = machines.filter(m => HW_FIELDS.some(f => m[f] != null && m[f] !== '')).length
+    if (!floorMap.has(room.floor.name)) floorMap.set(room.floor.name, { total: 0, errors: 0, sw: 0, hw: 0 })
+    const f = floorMap.get(room.floor.name)!
+    f.total += machines.length; f.errors += errorCount; f.sw += swCount; f.hw += hwCount
+  }
+  const floorStats = Array.from(floorMap.entries())
+    .map(([floor, s]) => ({ floor, ...s, rate: s.total > 0 ? Math.round(s.errors / s.total * 1000) / 10 : 0 }))
+    .sort((a, b) => b.errors - a.errors)
+
+  const byRoom = rooms.map(room => {
+    const machines  = allMachines.filter(m => m.roomId === room.id)
+    const errorCount = machines.filter(m => ERROR_FIELDS.some(f => m[f] != null && m[f] !== '')).length
+    return { roomCode: room.roomCode, floor: room.floor.name, totalMachines: machines.length, errorMachines: errorCount, goodMachines: machines.length - errorCount }
+  })
+
+  const supplies = SUPPLY_FIELDS.map(field => {
+    const intake = (supplyIntake._sum as Record<string, number | null>)[field] ?? 0
+    const used   = (supplyUsage._sum  as Record<string, number | null>)[field] ?? 0
+    return { type: field, label: SUPPLY_LABELS[field] ?? field, intake, used, balance: intake - used, pct: intake > 0 ? Math.round((intake - used) / intake * 100) : 0 }
+  }).filter(s => s.intake > 0)
+
+  return {
+    summary: {
+      totalMachines,
+      goodMachines,
+      errorMachines: errorMachines.length,
+      maintenanceToday: maintenanceToday.length,
+    },
+    errorMachinesList,
+    maintenanceLogs: maintenanceToday.map(m => ({
+      id: m.id,
+      date: m.maintenanceDate instanceof Date ? m.maintenanceDate.toISOString().slice(0, 10) : String(m.maintenanceDate).slice(0, 10),
+      room: m.room?.roomCode ?? '—',
+      technicianName: m.technicianName ?? m.technician?.name ?? '—',
+      notes: m.notes ?? '—',
+    })),
+    floorStats,
+    byRoom,
+    supplies,
+  }
+}
+
 // ── GET handler ───────────────────────────────────────────────────────────────
 export async function GET(req: NextRequest) {
   const auth = await requireRole(req, 'ADMIN', 'MANAGER')
@@ -402,7 +508,11 @@ export async function GET(req: NextRequest) {
       const data = await reportRecallKpi(from, to, techId)
       return Response.json({ type: 'recall-kpi', period, generatedAt: new Date().toISOString(), ...data })
     }
+    case 'daily': {
+      const data = await reportDaily(from, to)
+      return Response.json({ type: 'daily', period, generatedAt: new Date().toISOString(), ...data })
+    }
     default:
-      return Response.json({ error: 'type không hợp lệ. Dùng: machines | supply | parts-usage | recall-kpi' }, { status: 400 })
+      return Response.json({ error: 'type không hợp lệ. Dùng: machines | supply | parts-usage | recall-kpi | daily' }, { status: 400 })
   }
 }

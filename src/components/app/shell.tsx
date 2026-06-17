@@ -33,20 +33,41 @@ function Avatar({ src, initials, size = 38, radius = 10 }: { src?: string | null
   )
 }
 
-const NAV = [
-  { key: 'dashboard',           href: '/',                      label: 'Dashboard',              icon: 'dashboard', roles: ['ADMIN','MANAGER'] },
-  { key: 'dashboard-ktv',       href: '/dashboard/ktv',         label: 'Dashboard',              icon: 'dashboard', roles: ['TECHNICIAN','GUEST'] },
-  { key: 'rooms',               href: '/rooms',                 label: 'Phòng Máy',              icon: 'rooms',     roles: ['ADMIN','MANAGER','TECHNICIAN','GUEST'] },
-  { key: 'maintenance',         href: '/maintenance',           label: 'Nhật Ký Kỹ Thuật',      icon: 'wrench',    roles: ['ADMIN','MANAGER'] },
-  { key: 'maintenance-history', href: '/maintenance-history',   label: 'Lịch Sử Bảo Trì',       icon: 'wrench',    roles: ['TECHNICIAN'] },
-  { key: 'pre-repair',          href: '/pre-repair',            label: 'Tình Trạng Trước Sửa',  icon: 'camera',    roles: ['ADMIN','MANAGER','TECHNICIAN'] },
-  { key: 'recall',              href: '/recall',                label: 'Thu Hồi – Sửa Chữa',    icon: 'recall',    roles: ['ADMIN','MANAGER','TECHNICIAN'] },
-  { key: 'tickets',             href: '/tickets',               label: 'Ticker Báo Lỗi',        icon: 'ticket',    roles: ['ADMIN','MANAGER','TECHNICIAN','GUEST'] },
-  { key: 'software',            href: '/software',              label: 'Phần Mềm - Phần Cứng',  icon: 'software',  roles: ['ADMIN','MANAGER','TECHNICIAN'] },
-  { key: 'supplies',            href: '/supplies',              label: 'Vật Tư Tồn Kho',        icon: 'supplies',  roles: ['ADMIN','MANAGER'] },
-  { key: 'statistics',          href: '/stats',                 label: 'Thống Kê',               icon: 'stats',     roles: ['ADMIN','MANAGER'] },
-  { key: 'reports',             href: '/reports',               label: 'Báo Cáo',                icon: 'report',    roles: ['ADMIN','MANAGER'] },
-  { key: 'technicians',         href: '/technicians',           label: 'Kỹ Thuật Viên',          icon: 'users',     roles: ['ADMIN','MANAGER'] },
+// ───── Navigation structure grouped by section ─────
+const NAV_GROUPS = [
+  {
+    label: 'QUẢN LÝ',
+    items: [
+      { key: 'dashboard',     href: '/',              label: 'Dashboard',             icon: 'dashboard', roles: ['ADMIN','MANAGER'] },
+      { key: 'dashboard-ktv', href: '/dashboard/ktv', label: 'Dashboard',             icon: 'dashboard', roles: ['TECHNICIAN','GUEST'] },
+      { key: 'rooms',         href: '/rooms',         label: 'Phòng Máy',             icon: 'rooms',     roles: ['ADMIN','MANAGER','TECHNICIAN','GUEST'] },
+      { key: 'technicians',   href: '/technicians',   label: 'Kỹ Thuật Viên',         icon: 'users',     roles: ['ADMIN','MANAGER'] },
+    ],
+  },
+  {
+    label: 'VẬN HÀNH',
+    items: [
+      { key: 'maintenance',         href: '/maintenance',         label: 'Nhật Ký Kỹ Thuật',     icon: 'wrench',   roles: ['ADMIN','MANAGER'] },
+      { key: 'maintenance-history', href: '/maintenance-history', label: 'Lịch Sử Bảo Trì',      icon: 'wrench',   roles: ['TECHNICIAN'] },
+      { key: 'pre-repair',          href: '/pre-repair',          label: 'Tình Trạng Trước Sửa', icon: 'camera',   roles: ['ADMIN','MANAGER','TECHNICIAN'] },
+      { key: 'recall',              href: '/recall',              label: 'Thu Hồi – Sửa Chữa',   icon: 'recall',   roles: ['ADMIN','MANAGER','TECHNICIAN'] },
+    ],
+  },
+  {
+    label: 'HỖ TRỢ',
+    items: [
+      { key: 'tickets',  href: '/tickets',  label: 'Ticker Báo Lỗi',       icon: 'ticket',   roles: ['ADMIN','MANAGER','TECHNICIAN','GUEST'] },
+      { key: 'software', href: '/software', label: 'Phần Mềm - Phần Cứng', icon: 'software', roles: ['ADMIN','MANAGER','TECHNICIAN'] },
+    ],
+  },
+  {
+    label: 'KHO · BÁO CÁO',
+    items: [
+      { key: 'supplies',    href: '/supplies', label: 'Vật Tư Tồn Kho', icon: 'supplies', roles: ['ADMIN','MANAGER'] },
+      { key: 'statistics',  href: '/stats',    label: 'Thống Kê',        icon: 'stats',    roles: ['ADMIN','MANAGER'] },
+      { key: 'reports',     href: '/reports',  label: 'Báo Cáo',         icon: 'report',   roles: ['ADMIN','MANAGER'] },
+    ],
+  },
 ]
 
 const ROLE_LABELS: Record<import('@/lib/edge/jwt').UserRole, string> = {
@@ -63,6 +84,70 @@ function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/)
   if (parts.length >= 2) return (parts[parts.length - 2][0] + parts[parts.length - 1][0]).toUpperCase()
   return name.trim().slice(0, 2).toUpperCase()
+}
+
+function SidebarNavBtn({
+  icon, label, active, collapsed, badge, onClick, ariaLabel,
+}: {
+  icon: string; label: string; active: boolean; collapsed: boolean
+  badge?: number; onClick: () => void; ariaLabel?: string
+}) {
+  return (
+    <div style={{ position: 'relative' }}>
+      <button
+        onClick={onClick}
+        aria-label={ariaLabel ?? label}
+        aria-current={active ? 'page' : undefined}
+        title={collapsed ? label : undefined}
+        style={{
+          display: 'flex', alignItems: 'center',
+          gap: collapsed ? 0 : 12,
+          justifyContent: collapsed ? 'center' : 'flex-start',
+          padding: collapsed ? '10px 0' : '10px 12px',
+          borderRadius: 11, border: 'none', cursor: 'pointer',
+          fontFamily: 'var(--font)', fontSize: 13.5, fontWeight: active ? 600 : 500,
+          textAlign: 'left', width: '100%', transition: 'all .16s ease',
+          background: active ? 'var(--sidebar-active)' : 'transparent',
+          color: active ? '#fff' : 'var(--sidebar-text)',
+          borderLeft: active ? '3px solid rgba(255,255,255,.9)' : '3px solid transparent',
+          boxShadow: active ? '0 4px 12px -4px rgba(0,0,0,.4)' : 'none',
+          position: 'relative',
+        }}
+        className="nav-btn"
+      >
+        <Icon name={icon} size={19} stroke={active ? 2.3 : 2} />
+        {!collapsed && label}
+        {badge != null && badge > 0 && !collapsed && (
+          <span style={{
+            marginLeft: 'auto', minWidth: 18, height: 18, padding: '0 5px',
+            borderRadius: 99, background: 'var(--err)', color: '#fff',
+            fontSize: 10.5, fontWeight: 700, display: 'grid', placeItems: 'center',
+          }}>{badge > 99 ? '99+' : badge}</span>
+        )}
+        {badge != null && badge > 0 && collapsed && (
+          <span style={{
+            position: 'absolute', top: 6, right: 6, width: 8, height: 8,
+            borderRadius: 99, background: 'var(--err)', border: '2px solid var(--sidebar)',
+          }} />
+        )}
+      </button>
+
+      {/* CSS tooltip in collapsed mode */}
+      {collapsed && (
+        <span style={{
+          position: 'absolute', left: '100%', top: '50%', transform: 'translateY(-50%)',
+          marginLeft: 10, padding: '5px 10px',
+          background: 'rgba(15,23,42,.92)', color: '#fff',
+          fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap',
+          borderRadius: 7, pointerEvents: 'none',
+          opacity: 0, transition: 'opacity .15s ease',
+          zIndex: 200,
+        }} className="sb-tooltip">
+          {label}
+        </span>
+      )}
+    </div>
+  )
 }
 
 function Sidebar({ open, onClose, collapsed, onToggle, user, onProfile, ticketBadge }: {
@@ -94,9 +179,15 @@ function Sidebar({ open, onClose, collapsed, onToggle, user, onProfile, ticketBa
   const department = user?.profile?.department ?? ''
   const initials = getInitials(displayName)
   const roleLabel = user?.role ? ROLE_LABELS[user.role as import('@/lib/edge/jwt').UserRole] ?? 'Khách' : 'Khách'
+  const userRole = user?.role ?? 'TECHNICIAN'
 
   return (
     <>
+      <style>{`
+        .nav-btn-wrap:hover .sb-tooltip { opacity: 1 !important; }
+        .sb-tooltip-wrap { position: relative; }
+        .sb-tooltip-wrap:hover .sb-tooltip { opacity: 1 !important; }
+      `}</style>
       {open && <div className="dim-overlay" style={{ zIndex: 60 }} onClick={onClose} />}
       <aside style={{
         width: collapsed ? SB_MINI : SB_FULL,
@@ -115,85 +206,138 @@ function Sidebar({ open, onClose, collapsed, onToggle, user, onProfile, ticketBa
           }
         </div>
 
-        <div style={{ padding: collapsed ? '6px 8px' : '6px 14px', flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
-          <button onClick={onToggle} title={collapsed ? 'Mở rộng' : 'Thu gọn'} style={{
-            display: 'flex', alignItems: 'center',
-            gap: collapsed ? 0 : 12,
-            justifyContent: collapsed ? 'center' : 'flex-start',
-            padding: collapsed ? '10px 0' : '10px 12px',
-            borderRadius: 11, border: 'none', cursor: 'pointer',
-            fontFamily: 'var(--font)', fontSize: 13.5, fontWeight: 500,
-            textAlign: 'left', width: '100%', transition: 'all .16s ease',
-            background: 'transparent', color: 'var(--sidebar-text)',
-            marginBottom: 6,
-          }}>
+        <div style={{ padding: collapsed ? '6px 8px' : '6px 10px', flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+          {/* Toggle button */}
+          <button
+            onClick={onToggle}
+            aria-label={collapsed ? 'Mở rộng menu' : 'Thu gọn menu'}
+            title={collapsed ? 'Mở rộng' : 'Thu gọn'}
+            style={{
+              display: 'flex', alignItems: 'center',
+              gap: collapsed ? 0 : 12,
+              justifyContent: collapsed ? 'center' : 'flex-start',
+              padding: collapsed ? '10px 0' : '10px 12px',
+              borderRadius: 11, border: 'none', cursor: 'pointer',
+              fontFamily: 'var(--font)', fontSize: 13.5, fontWeight: 500,
+              textAlign: 'left', width: '100%', transition: 'all .16s ease',
+              background: 'transparent', color: 'var(--sidebar-text)',
+              borderLeft: '3px solid transparent',
+              marginBottom: 4,
+            }}
+            className="nav-btn"
+          >
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>
             </svg>
             {!collapsed && ''}
           </button>
-          <nav style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            {NAV.filter(n => n.roles.includes(user?.role ?? 'TECHNICIAN')).map(n => {
-              const active = isActive(n.key)
-              const badge  = n.key === 'tickets' && ticketBadge > 0 ? ticketBadge : 0
-              return (
-                <button key={n.key} onClick={() => router.push(n.href)} title={collapsed ? n.label : undefined} style={{
-                  display: 'flex', alignItems: 'center',
-                  gap: collapsed ? 0 : 12,
-                  justifyContent: collapsed ? 'center' : 'flex-start',
-                  padding: collapsed ? '10px 0' : '10px 12px',
-                  borderRadius: 11, border: 'none', cursor: 'pointer',
-                  fontFamily: 'var(--font)', fontSize: 13.5, fontWeight: active ? 600 : 500,
-                  textAlign: 'left', width: '100%', transition: 'all .16s ease',
-                  background: active ? 'var(--sidebar-active)' : 'transparent',
-                  color: active ? '#fff' : 'var(--sidebar-text)',
-                  boxShadow: active ? '0 4px 12px -4px rgba(0,0,0,.4)' : 'none',
-                  position: 'relative',
-           }} className="nav-btn">
-                  <Icon name={n.icon} size={19} stroke={active ? 2.3 : 2} />
-                  {!collapsed && n.label}
-                  {badge > 0 && (
-                    <span style={{
-                      marginLeft: 'auto', minWidth: 18, height: 18, padding: '0 5px',
-                      borderRadius: 99, background: 'var(--err)', color: '#fff',
-                      fontSize: 10.5, fontWeight: 700, display: 'grid', placeItems: 'center',
-                    }}>{badge > 99 ? '99+' : badge}</span>
-                  )}
-                  {badge > 0 && collapsed && (
-                    <span style={{
-                      position: 'absolute', top: 6, right: 6, width: 8, height: 8,
-                      borderRadius: 99, background: 'var(--err)', border: '2px solid var(--sidebar)',
-                    }} />
-                  )}
-                </button>
-              )
-            })}
-          </nav>
 
-          {!collapsed && (
-            <div style={{ color: 'var(--sidebar-text-faint)', fontSize: 10.5, fontWeight: 700, letterSpacing: '.12em', padding: '20px 10px 8px' }}>HỆ THỐNG</div>
-          )}
-          {collapsed && <div style={{ height: 12 }} />}
-          <nav style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            {[{ k: 'settings', l: 'Cài đặt', i: 'settings' }, { k: 'logout', l: 'Đăng xuất', i: 'logout' }].map(n => (
-              <button key={n.k} onClick={() => n.k === 'logout' ? handleLogout() : router.push('/settings')} title={collapsed ? n.l : undefined} style={{
-                display: 'flex', alignItems: 'center',
-                gap: collapsed ? 0 : 12,
-                justifyContent: collapsed ? 'center' : 'flex-start',
-                padding: collapsed ? '10px 0' : '10px 12px',
-                borderRadius: 11, border: 'none', cursor: 'pointer',
-                fontFamily: 'var(--font)', fontSize: 13.5, fontWeight: 500,
-                textAlign: 'left', width: '100%',
-                background: 'transparent', color: 'var(--sidebar-text)', transition: 'all .16s ease',
-              }} className="nav-btn">
-                <Icon name={n.i} size={19} stroke={2} />
-                {!collapsed && n.l}
-              </button>
-            ))}
-          </nav>
+          {/* Grouped navigation */}
+          {NAV_GROUPS.map(group => {
+            const visibleItems = group.items.filter(n => n.roles.includes(userRole))
+            if (visibleItems.length === 0) return null
+            return (
+              <div key={group.label} style={{ marginTop: 8 }}>
+                {!collapsed && (
+                  <div style={{
+                    color: 'rgba(255,255,255,.30)',
+                    fontSize: 10, fontWeight: 700,
+                    letterSpacing: '.12em',
+                    textTransform: 'uppercase',
+                    padding: '12px 10px 6px',
+                    userSelect: 'none',
+                  }}>
+                    {group.label}
+                  </div>
+                )}
+                {collapsed && <div style={{ height: 8 }} />}
+                <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {visibleItems.map(n => {
+                    const active = isActive(n.key)
+                    const badge = n.key === 'tickets' && ticketBadge > 0 ? ticketBadge : 0
+                    return (
+                      <div key={n.key} className="sb-tooltip-wrap">
+                        <SidebarNavBtn
+                          icon={n.icon}
+                          label={n.label}
+                          active={active}
+                          collapsed={collapsed}
+                          badge={badge}
+                          onClick={() => router.push(n.href)}
+                          ariaLabel={n.label}
+                        />
+                      </div>
+                    )
+                  })}
+                </nav>
+              </div>
+            )
+          })}
+
+          {/* HỆ THỐNG group */}
+          <div style={{ marginTop: 8 }}>
+            {!collapsed && (
+              <div style={{
+                color: 'rgba(255,255,255,.30)',
+                fontSize: 10, fontWeight: 700,
+                letterSpacing: '.12em',
+                textTransform: 'uppercase',
+                padding: '12px 10px 6px',
+                userSelect: 'none',
+              }}>
+                HỆ THỐNG
+              </div>
+            )}
+            {collapsed && <div style={{ height: 8 }} />}
+            <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {[
+                { k: 'settings', l: 'Cài đặt',   i: 'settings', href: '/settings' },
+                { k: 'logout',   l: 'Đăng xuất', i: 'logout',   href: '' },
+              ].map(n => (
+                <div key={n.k} className="sb-tooltip-wrap">
+                  <button
+                    onClick={() => n.k === 'logout' ? handleLogout() : router.push(n.href)}
+                    aria-label={n.l}
+                    aria-current={n.k === 'settings' && pathname === '/settings' ? 'page' : undefined}
+                    title={collapsed ? n.l : undefined}
+                    style={{
+                      display: 'flex', alignItems: 'center',
+                      gap: collapsed ? 0 : 12,
+                      justifyContent: collapsed ? 'center' : 'flex-start',
+                      padding: collapsed ? '10px 0' : '10px 12px',
+                      borderRadius: 11, border: 'none', cursor: 'pointer',
+                      fontFamily: 'var(--font)', fontSize: 13.5, fontWeight: 500,
+                      textAlign: 'left', width: '100%',
+                      background: n.k === 'settings' && pathname === '/settings' ? 'var(--sidebar-active)' : 'transparent',
+                      color: n.k === 'settings' && pathname === '/settings' ? '#fff' : 'var(--sidebar-text)',
+                      borderLeft: n.k === 'settings' && pathname === '/settings' ? '3px solid rgba(255,255,255,.9)' : '3px solid transparent',
+                      transition: 'all .16s ease',
+                    }}
+                    className="nav-btn"
+                  >
+                    <Icon name={n.i} size={19} stroke={2} />
+                    {!collapsed && n.l}
+                  </button>
+                  {collapsed && (
+                    <span style={{
+                      position: 'absolute', left: '100%', top: '50%', transform: 'translateY(-50%)',
+                      marginLeft: 10, padding: '5px 10px',
+                      background: 'rgba(15,23,42,.92)', color: '#fff',
+                      fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap',
+                      borderRadius: 7, pointerEvents: 'none',
+                      opacity: 0, transition: 'opacity .15s ease',
+                      zIndex: 200,
+                    }} className="sb-tooltip">
+                      {n.l}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </nav>
+          </div>
         </div>
 
-        {/* User */}
+        {/* User card */}
         {!collapsed && (
           <div style={{ padding: 14, borderTop: '1px solid rgba(255,255,255,.08)', flexShrink: 0 }}>
             <div onClick={onProfile} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: 8, borderRadius: 12, background: 'rgba(255,255,255,.05)', cursor: 'pointer' }}>
@@ -235,6 +379,7 @@ function Topbar({ breadcrumb, onMenu, theme, setTheme, user, onProfile }: {
     if (parts.length >= 2) return (parts[parts.length - 2][0] + parts[parts.length - 1][0]).toUpperCase()
     return displayName.trim().slice(0, 2).toUpperCase()
   })()
+  void initials
 
   return (
     <header style={{ height: 90, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '0 26px', background: 'color-mix(in srgb, var(--bg) 80%, transparent)', backdropFilter: 'blur(10px)', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, zIndex: 40 }}>
@@ -332,7 +477,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => { setOpen(false) }, [pathname])
 
-  // Fetch user profile
   const refreshUser = () => {
     fetch('/api/auth/profile')
       .then(r => r.ok ? r.json() : null)
@@ -346,7 +490,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('profile-updated', refreshUser)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Fetch ticket badge mỗi 60 giây
   useEffect(() => {
     const fetchBadge = () => {
       const role = (user as (UserState & { role?: string }) | null)?.role

@@ -10,6 +10,7 @@ import { Icon } from '@/components/app/icons'
 // ── Types ──────────────────────────────────────────────────────────────────
 interface ApiRoom { id: number; roomCode: string }
 interface Tech { id: number; name: string }
+interface ApiMachine { id: number; machineNo: number; isTeacher: boolean }
 
 interface ApiLog {
   id: number
@@ -17,6 +18,8 @@ interface ApiLog {
   isSupplyIntake: boolean
   technicianName: string | null
   technicianId: number | null
+  machineId: number | null
+  machineNo: number | null
   technician: Tech | null
   createdBy: { username: string | null; email: string | null; profile: { displayName: string | null } | null } | null
   notes: string | null
@@ -145,6 +148,10 @@ function RecordSheet({ open, onClose, onSaved, rooms, editLog, isKtv }: {
   const [saving, setSaving] = useState(false)
   const [errMsg, setErrMsg] = useState('')
   const [techs, setTechs] = useState<Tech[]>([])
+  const [selectedMachineId, setSelectedMachineId] = useState<number>(0)
+  const [availableMachines, setAvailableMachines] = useState<ApiMachine[]>([])
+
+  const currentRoom = room || (rooms[0]?.roomCode ?? '')
 
   useEffect(() => {
     if (!open) return
@@ -154,6 +161,7 @@ function RecordSheet({ open, onClose, onSaved, rooms, editLog, isKtv }: {
       setRoom(editLog.room?.roomCode ?? '')
       setTechId(editLog.technicianId ?? 0)
       setDate(editLog.maintenanceDate.slice(0, 10))
+      setSelectedMachineId(editLog.machineId ?? 0)
       const q: Record<string, string> = {}
       for (const { field, key } of QTY_MAP) { const v = editLog[field] as number; if (v > 0) q[key] = String(v) }
       setQty(q)
@@ -164,12 +172,23 @@ function RecordSheet({ open, onClose, onSaved, rooms, editLog, isKtv }: {
       setAfter(String(editLog.softwareErrorsAfter + editLog.hardwareErrorsAfter || ''))
       setNote(editLog.notes ?? '')
     } else {
-      setMode('bt'); setRoom(''); setTechId(0)
+      setMode('bt'); setRoom(''); setTechId(0); setSelectedMachineId(0)
       setDate(new Date().toISOString().slice(0, 10))
       setQty({}); setRecQty({}); setBefore(''); setAfter(''); setNote('')
     }
     setErrMsg('')
   }, [open, editLog])
+
+  // Fetch machines khi phòng thay đổi (chỉ ở chế độ bảo trì)
+  useEffect(() => {
+    if (!open || mode !== 'bt' || !currentRoom) { setAvailableMachines([]); return }
+    const roomObj = rooms.find(r => r.roomCode === currentRoom)
+    if (!roomObj) { setAvailableMachines([]); return }
+    fetch(`/api/machines?roomId=${roomObj.id}`)
+      .then(r => r.ok ? r.json() : [])
+      .then((data: ApiMachine[]) => setAvailableMachines(data.sort((a, b) => a.machineNo - b.machineNo)))
+      .catch(() => setAvailableMachines([]))
+  }, [open, mode, currentRoom, rooms])
 
   const setItem = (k: string, v: string) => setQty(p => ({ ...p, [k]: v }))
   const setRecItem = (k: string, v: string) => setRecQty(p => ({ ...p, [k]: v }))
@@ -179,9 +198,15 @@ function RecordSheet({ open, onClose, onSaved, rooms, editLog, isKtv }: {
   const roomOpts = useMemo(() => rooms.map(r => ({ value: r.roomCode, label: r.roomCode })), [rooms])
   const firstRoom = rooms[0]?.roomCode ?? ''
 
+  const machineOpts = useMemo(() => [
+    { value: '0', label: '— Không liên quan máy cụ thể —' },
+    ...availableMachines.map(m => ({ value: String(m.id), label: `Máy ${m.machineNo}${m.isTeacher ? ' (GV)' : ''}` })),
+  ], [availableMachines])
+
   const handleSave = async () => {
     setSaving(true); setErrMsg('')
     try {
+      const selectedMachine = availableMachines.find(m => m.id === selectedMachineId)
       const body: Record<string, unknown> = {
         isSupplyIntake: mode === 'nk',
         maintenanceDate: date,
@@ -192,8 +217,10 @@ function RecordSheet({ open, onClose, onSaved, rooms, editLog, isKtv }: {
         hardwareErrorsAfter: 0,
         technicianId: techId > 0 ? techId : null,
         technicianName: techId > 0 ? (techs.find(t => t.id === techId)?.name ?? '') : null,
+        machineId: selectedMachineId > 0 ? selectedMachineId : null,
+        machineNo: selectedMachine ? selectedMachine.machineNo : null,
       }
-      if (mode === 'bt') body.roomCode = room || firstRoom
+      if (mode === 'bt') body.roomCode = currentRoom || firstRoom
       for (const { field, key } of QTY_MAP) body[field] = +(qty[key] || 0)
       for (const { field, key } of REC_QTY_MAP) body[field] = +(recQty[key] || 0)
 
@@ -235,13 +262,19 @@ function RecordSheet({ open, onClose, onSaved, rooms, editLog, isKtv }: {
         <div style={{ display: 'grid', gridTemplateColumns: mode === 'bt' ? '1fr 1fr' : '1fr', gap: 12 }}>
           {mode === 'bt' && (
             <Field label="Phòng máy">
-              <Select value={room || firstRoom} onChange={setRoom} options={roomOpts} style={{ width: '100%' }} />
+              <Select value={currentRoom} onChange={v => { setRoom(v); setSelectedMachineId(0) }} options={roomOpts} style={{ width: '100%' }} />
             </Field>
           )}
           <Field label="Ngày">
             <div className="field"><Icon name="calendar" size={16} style={{ color: 'var(--text-faint)' }} /><input type="date" value={date} onChange={e => setDate(e.target.value)} /></div>
           </Field>
         </div>
+
+        {mode === 'bt' && (
+          <Field label="Máy liên quan (tuỳ chọn)">
+            <Select value={String(selectedMachineId)} onChange={v => setSelectedMachineId(+v)} options={machineOpts} style={{ width: '100%' }} />
+          </Field>
+        )}
 
         <Field label="Kỹ thuật viên">
           <Select value={String(techId)} onChange={v => setTechId(+v)} options={[{ value: '0', label: '— Chọn KTV —' }, ...techOpts]} style={{ width: '100%' }} />
@@ -331,9 +364,20 @@ export default function MaintenancePage() {
     finally { setDeletingId(null) }
   }
 
-  if (loading) return <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-faint)', fontSize: 14 }}>Đang tải dữ liệu...</div>
-  if (error)   return <div style={{ padding: 60, textAlign: 'center', color: 'var(--err-tx)', fontSize: 14 }}>Lỗi tải dữ liệu: {error}</div>
-  if (!resp)   return null
+  if (loading) return (
+    <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-faint)', fontSize: 14 }}>
+      <Icon name="refresh" size={28} style={{ marginBottom: 12, opacity: 0.4, animation: 'spin 1s linear infinite', display: 'block', margin: '0 auto 12px' }} />
+      <div>Đang tải dữ liệu...</div>
+    </div>
+  )
+  if (error) return (
+    <div style={{ padding: 60, textAlign: 'center' }}>
+      <Icon name="alert" size={28} style={{ color: 'var(--err)', display: 'block', margin: '0 auto 12px' }} />
+      <div style={{ color: 'var(--err-tx)', fontSize: 14, marginBottom: 16 }}>Không tải được dữ liệu. Vui lòng thử lại.</div>
+      <Button variant="outline" size="sm" onClick={() => refetch()} icon="refresh">Thử lại</Button>
+    </div>
+  )
+  if (!resp) return null
 
   const allLogs = resp.data
   const uniqueTechs = Array.from(
@@ -390,7 +434,14 @@ export default function MaintenancePage() {
                       <div style={{ fontWeight: 600, color: m.isSupplyIntake ? 'var(--primary)' : 'var(--text)' }}>{logId(m)}</div>
                       <div style={{ fontSize: 12, color: 'var(--text-faint)' }}>{fmtDate(m.maintenanceDate)}</div>
                     </td>
-                    <td>{m.isSupplyIntake ? <Badge tone="info" icon="pkgIn">Nhập kho</Badge> : <Badge tone="muted">{m.room?.roomCode ?? '—'}</Badge>}</td>
+                    <td>
+                      {m.isSupplyIntake
+                        ? <Badge tone="info" icon="pkgIn">Nhập kho</Badge>
+                        : <span style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+                            <Badge tone="muted">{m.room?.roomCode ?? '—'}</Badge>
+                            {m.machineNo != null && <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>· Máy {m.machineNo}</span>}
+                          </span>}
+                    </td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       {m.technician?.name || m.technicianName ||
                        m.createdBy?.profile?.displayName || m.createdBy?.username || m.createdBy?.email || '—'}

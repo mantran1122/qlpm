@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import { signToken, COOKIE_NAME, MAX_LOGIN_ATTEMPTS, LOCKOUT_MINUTES } from '@/lib/auth'
+import { signToken, COOKIE_NAME, MAX_LOGIN_ATTEMPTS, LOCKOUT_MINUTES, getSessionMaxAgeSeconds } from '@/lib/auth'
 import { rateLimit } from '@/lib/node/rate-limit'
 import { sendNotification } from '@/lib/node/notification'
 import bcrypt from 'bcryptjs'
@@ -135,6 +135,7 @@ export async function POST(req: NextRequest) {
     role: user.role,
     ver: user.tokenVersion,
   })
+  const sessionMaxAge = getSessionMaxAgeSeconds(user.role)
 
   // Gửi thông báo thiết bị lạ
   if (isNewDevice) {
@@ -162,7 +163,7 @@ export async function POST(req: NextRequest) {
     httpOnly: true,
     path: '/',
     sameSite: 'lax',
-    maxAge: 30 * 60,  // 30 phút (buffer cho sliding refresh)
+    maxAge: sessionMaxAge,
     secure: process.env.NODE_ENV === 'production',
   })
 
@@ -173,7 +174,7 @@ export async function POST(req: NextRequest) {
     httpOnly: false,
     path: '/',
     sameSite: 'lax',
-    maxAge: 30 * 60,
+    maxAge: sessionMaxAge,
     secure: process.env.NODE_ENV === 'production',
   })
 

@@ -16,16 +16,16 @@ model Floor {
 }
 
 model Room {
-  id              Int              @id @default(autoincrement())
-  floorId         Int
-  roomCode        String           @unique @db.VarChar(10)
-  totalMachines   Int
-  cpuSpec         String?          @db.VarChar(50)
-  ramSpec         String?          @db.VarChar(30)
-  diskSpec        String?          @db.VarChar(50)
-  monitorSpec     String?          @db.VarChar(30)
-  notes           String?          @db.Text
-  floor             Floor            @relation(fields: [floorId], references: [id])
+  id                Int                     @id @default(autoincrement())
+  floorId           Int
+  roomCode          String                  @unique @db.VarChar(10)
+  totalMachines     Int
+  cpuSpec           String?                 @db.VarChar(50)
+  ramSpec           String?                 @db.VarChar(30)
+  diskSpec          String?                 @db.VarChar(50)
+  monitorSpec       String?                 @db.VarChar(30)
+  notes             String?                 @db.Text
+  floor             Floor                   @relation(fields: [floorId], references: [id])
   machines          Machine[]
   maintenanceLogs   MaintenanceLog[]
   preRepairStatuses DevicePreRepairStatus[]
@@ -36,28 +36,28 @@ model Room {
 }
 
 model Machine {
-  id                Int       @id @default(autoincrement())
+  id                Int                     @id @default(autoincrement())
   roomId            Int
   machineNo         Int
-  isTeacher         Boolean   @default(false)
-  softwareError     String?   @db.Text
-  caseError         String?   @db.Text
-  cpuError          String?   @db.Text
-  ramError          String?   @db.Text
-  diskError         String?   @db.Text
-  powerError        String?   @db.Text
-  monitorError      String?   @db.Text
-  monitorCableError String?   @db.Text
-  powerCableError   String?   @db.Text
-  mouseError        String?   @db.Text
-  networkError      String?   @db.Text
-  keyboardError     String?   @db.Text
-  extraNotes        String?   @db.Text
-  isFaulty          Boolean   @default(false)
+  isTeacher         Boolean                 @default(false)
+  softwareError     String?                 @db.Text
+  caseError         String?                 @db.Text
+  cpuError          String?                 @db.Text
+  ramError          String?                 @db.Text
+  diskError         String?                 @db.Text
+  powerError        String?                 @db.Text
+  monitorError      String?                 @db.Text
+  monitorCableError String?                 @db.Text
+  powerCableError   String?                 @db.Text
+  mouseError        String?                 @db.Text
+  networkError      String?                 @db.Text
+  keyboardError     String?                 @db.Text
+  extraNotes        String?                 @db.Text
+  isFaulty          Boolean                 @default(false)
   lastMaintainedAt  DateTime?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  room              Room      @relation(fields: [roomId], references: [id])
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  room              Room                    @relation(fields: [roomId], references: [id])
   maintenanceLogs   MaintenanceLog[]
   preRepairStatuses DevicePreRepairStatus[]
   recallRecords     RecallRecord[]
@@ -84,20 +84,20 @@ enum SoftwareCategory {
 }
 
 model User {
-  id            Int          @id @default(autoincrement())
-  username      String       @unique @db.VarChar(50)
-  email         String       @unique @db.VarChar(100)
-  passwordHash  String       @db.VarChar(255)
-  role          UserRole     @default(TECHNICIAN)
-  isActive      Boolean      @default(true)
-  tokenVersion  Int          @default(0)
-  lastLoginAt   DateTime?
-  lastLoginIp   String?      @db.VarChar(45)
-  lastLoginUa   String?      @db.VarChar(500)
-  loginAttempts Int          @default(0)
-  lockedUntil   DateTime?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id                     Int                     @id @default(autoincrement())
+  username               String                  @unique @db.VarChar(50)
+  email                  String                  @unique @db.VarChar(100)
+  passwordHash           String                  @db.VarChar(255)
+  role                   UserRole                @default(TECHNICIAN)
+  isActive               Boolean                 @default(true)
+  tokenVersion           Int                     @default(0)
+  lastLoginAt            DateTime?
+  lastLoginIp            String?                 @db.VarChar(45)
+  lastLoginUa            String?                 @db.VarChar(500)
+  loginAttempts          Int                     @default(0)
+  lockedUntil            DateTime?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
   profile                UserProfile?
   auditLogs              AuditLog[]
   createdMaintenanceLogs MaintenanceLog[]
@@ -136,70 +136,70 @@ enum UserRole {
 }
 
 model Technician {
-  id                Int                    @id @default(autoincrement())
-  name              String                 @db.VarChar(80)
-  phone             String?                @db.VarChar(15)
-  department        String?                @db.VarChar(100)
-  notes             String?                @db.Text
-  isActive          Boolean                @default(true)
-  userId            Int?                   @unique
-  createdAt         DateTime               @default(now())
-  updatedAt         DateTime               @updatedAt
-  user              User?                  @relation(fields: [userId], references: [id], onDelete: SetNull)
-  maintenanceLogs   MaintenanceLog[]
-  preRepairStatuses DevicePreRepairStatus[]
-  recalledTechRecords  RecallRecord[]      @relation("RecalledByTech")
-  repairedTechRecords  RecallRecord[]      @relation("RepairedByTech")
-  assignedTickets      Ticket[]
+  id                  Int                     @id @default(autoincrement())
+  name                String                  @db.VarChar(80)
+  phone               String?                 @db.VarChar(15)
+  department          String?                 @db.VarChar(100)
+  notes               String?                 @db.Text
+  isActive            Boolean                 @default(true)
+  userId              Int?                    @unique
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  user                User?                   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  maintenanceLogs     MaintenanceLog[]
+  preRepairStatuses   DevicePreRepairStatus[]
+  recalledTechRecords RecallRecord[]          @relation("RecalledByTech")
+  repairedTechRecords RecallRecord[]          @relation("RepairedByTech")
+  assignedTickets     Ticket[]
 
   @@map("technicians")
 }
 
 model MaintenanceLog {
-  id                   Int         @id @default(autoincrement())
+  id                   Int           @id @default(autoincrement())
   roomId               Int?
   machineId            Int?
   machineNo            Int?
-  actionType           String?     @db.VarChar(50)
+  actionType           String?       @db.VarChar(50)
   completedAt          DateTime?
   createdById          Int?
-  isSupplyIntake       Boolean     @default(false)
-  maintenanceDate      DateTime    @db.Date
-  caseQty              Int         @default(0)
-  cpuQty               Int         @default(0)
-  ramQty               Int         @default(0)
-  diskQty              Int         @default(0)
-  powerQty             Int         @default(0)
-  monitorQty           Int         @default(0)
-  monitorCableQty      Int         @default(0)
-  powerCableQty        Int         @default(0)
-  mouseQty             Int         @default(0)
-  networkQty           Int         @default(0)
-  keyboardQty          Int         @default(0)
-  recCaseQty           Int         @default(0)
-  recCpuQty            Int         @default(0)
-  recRamQty            Int         @default(0)
-  recDiskQty           Int         @default(0)
-  recPowerQty          Int         @default(0)
-  recMonitorQty        Int         @default(0)
-  recMonitorCableQty   Int         @default(0)
-  recPowerCableQty     Int         @default(0)
-  recMouseQty          Int         @default(0)
-  recNetworkQty        Int         @default(0)
-  recKeyboardQty       Int         @default(0)
-  notes                String?     @db.Text
-  softwareErrorsBefore Int         @default(0)
-  hardwareErrorsBefore Int         @default(0)
-  softwareErrorsAfter  Int         @default(0)
-  hardwareErrorsAfter  Int         @default(0)
-  technicianName       String?     @db.VarChar(50) @map("technician")
+  isSupplyIntake       Boolean       @default(false)
+  maintenanceDate      DateTime      @db.Date
+  caseQty              Int           @default(0)
+  cpuQty               Int           @default(0)
+  ramQty               Int           @default(0)
+  diskQty              Int           @default(0)
+  powerQty             Int           @default(0)
+  monitorQty           Int           @default(0)
+  monitorCableQty      Int           @default(0)
+  powerCableQty        Int           @default(0)
+  mouseQty             Int           @default(0)
+  networkQty           Int           @default(0)
+  keyboardQty          Int           @default(0)
+  recCaseQty           Int           @default(0)
+  recCpuQty            Int           @default(0)
+  recRamQty            Int           @default(0)
+  recDiskQty           Int           @default(0)
+  recPowerQty          Int           @default(0)
+  recMonitorQty        Int           @default(0)
+  recMonitorCableQty   Int           @default(0)
+  recPowerCableQty     Int           @default(0)
+  recMouseQty          Int           @default(0)
+  recNetworkQty        Int           @default(0)
+  recKeyboardQty       Int           @default(0)
+  notes                String?       @db.Text
+  softwareErrorsBefore Int           @default(0)
+  hardwareErrorsBefore Int           @default(0)
+  softwareErrorsAfter  Int           @default(0)
+  hardwareErrorsAfter  Int           @default(0)
+  technicianName       String?       @map("technician") @db.VarChar(50)
   technicianId         Int?
   recallRecordId       Int?
-  createdAt            DateTime    @default(now())
-  room                 Room?       @relation(fields: [roomId], references: [id])
-  machine              Machine?    @relation(fields: [machineId], references: [id])
-  technician           Technician? @relation(fields: [technicianId], references: [id])
-  createdBy            User?       @relation(fields: [createdById], references: [id])
+  createdAt            DateTime      @default(now())
+  room                 Room?         @relation(fields: [roomId], references: [id])
+  machine              Machine?      @relation(fields: [machineId], references: [id], onDelete: SetNull)
+  technician           Technician?   @relation(fields: [technicianId], references: [id])
+  createdBy            User?         @relation(fields: [createdById], references: [id])
   recallRecord         RecallRecord? @relation(fields: [recallRecordId], references: [id], onDelete: SetNull)
 
   @@index([createdById])
@@ -275,26 +275,26 @@ model NotificationDebounce {
 // ── Phase A ──────────────────────────────────────────────────────────────────
 
 model DevicePreRepairStatus {
-  id           Int       @id @default(autoincrement())
+  id           Int      @id @default(autoincrement())
   machineId    Int
   roomId       Int
   machineNo    Int
-  description  String    @db.Text
-  reportedBy   String?   @db.VarChar(100)
+  description  String   @db.Text
+  reportedBy   String?  @db.VarChar(100)
   reportedAt   DateTime
-  imageUrls    String?   @db.Text
+  imageUrls    String?  @db.Text
   technicianId Int?
   createdById  Int
-  createdAt    DateTime  @default(now())
+  createdAt    DateTime @default(now())
 
-  machine       Machine      @relation(fields: [machineId],    references: [id])
-  room          Room         @relation(fields: [roomId],       references: [id])
-  technician    Technician?  @relation(fields: [technicianId], references: [id])
-  createdBy     User         @relation(fields: [createdById],  references: [id])
+  machine       Machine        @relation(fields: [machineId], references: [id])
+  room          Room           @relation(fields: [roomId], references: [id])
+  technician    Technician?    @relation(fields: [technicianId], references: [id])
+  createdBy     User           @relation(fields: [createdById], references: [id])
   recallRecords RecallRecord[]
 
   @@index([machineId, createdAt])
-  @@index([roomId,    createdAt])
+  @@index([roomId, createdAt])
   @@index([createdById])
   @@map("device_pre_repair_status")
 }
@@ -314,37 +314,37 @@ enum RecallComplexity {
 }
 
 model RecallRecord {
-  id                      Int               @id @default(autoincrement())
-  machineId               Int
-  roomId                  Int
-  machineNo               Int
-  recallType              RecallType
-  complexity              RecallComplexity  @default(MEDIUM)
+  id         Int              @id @default(autoincrement())
+  machineId  Int
+  roomId     Int
+  machineNo  Int
+  recallType RecallType
+  complexity RecallComplexity @default(MEDIUM)
 
-  recalledById            Int
-  recalledByTechnicianId  Int?
-  recalledAt              DateTime
+  recalledById           Int
+  recalledByTechnicianId Int?
+  recalledAt             DateTime
 
-  repairedById            Int?
-  repairedByTechnicianId  Int?
-  repairStartedAt         DateTime?
-  repairFinishedAt        DateTime?
+  repairedById           Int?
+  repairedByTechnicianId Int?
+  repairStartedAt        DateTime?
+  repairFinishedAt       DateTime?
 
-  preRepairStatusId       Int?
-  notes                   String?           @db.Text
+  preRepairStatusId Int?
+  notes             String? @db.Text
 
-  createdAt               DateTime          @default(now())
-  updatedAt               DateTime          @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  machine                Machine                @relation(fields: [machineId],               references: [id])
-  room                   Room                   @relation(fields: [roomId],                  references: [id])
-  recalledBy             User                   @relation("RecalledBy",    fields: [recalledById],           references: [id])
-  recalledByTechnician   Technician?            @relation("RecalledByTech", fields: [recalledByTechnicianId], references: [id])
-  repairedBy             User?                  @relation("RepairedBy",    fields: [repairedById],            references: [id])
-  repairedByTechnician   Technician?            @relation("RepairedByTech", fields: [repairedByTechnicianId], references: [id])
-  preRepairStatus        DevicePreRepairStatus? @relation(fields: [preRepairStatusId],        references: [id])
-  maintenanceLogs        MaintenanceLog[]
-  alerts                 RecallAlert[]
+  machine              Machine                @relation(fields: [machineId], references: [id])
+  room                 Room                   @relation(fields: [roomId], references: [id])
+  recalledBy           User                   @relation("RecalledBy", fields: [recalledById], references: [id])
+  recalledByTechnician Technician?            @relation("RecalledByTech", fields: [recalledByTechnicianId], references: [id])
+  repairedBy           User?                  @relation("RepairedBy", fields: [repairedById], references: [id])
+  repairedByTechnician Technician?            @relation("RepairedByTech", fields: [repairedByTechnicianId], references: [id])
+  preRepairStatus      DevicePreRepairStatus? @relation(fields: [preRepairStatusId], references: [id])
+  maintenanceLogs      MaintenanceLog[]
+  alerts               RecallAlert[]
 
   @@index([machineId, createdAt])
   @@index([recalledById])
@@ -373,26 +373,26 @@ enum TicketSeverity {
 }
 
 model Ticket {
-  id            Int            @id @default(autoincrement())
-  roomId        Int?
-  machineNo     Int?
-  title         String         @db.VarChar(200)
-  description   String         @db.Text
-  severity      TicketSeverity @default(MEDIUM)
-  status        TicketStatus   @default(PENDING)
-  isUrgent      Boolean        @default(false)
-  urgentReason  String?        @db.Text
-  imageUrls     String?        @db.Text
-  createdById   Int
-  assignedToId  Int?
-  guestReadAt   DateTime?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id           Int            @id @default(autoincrement())
+  roomId       Int?
+  machineNo    Int?
+  title        String         @db.VarChar(200)
+  description  String         @db.Text
+  severity     TicketSeverity @default(MEDIUM)
+  status       TicketStatus   @default(PENDING)
+  isUrgent     Boolean        @default(false)
+  urgentReason String?        @db.Text
+  imageUrls    String?        @db.Text
+  createdById  Int
+  assignedToId Int?
+  guestReadAt  DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
 
-  room          Room?          @relation(fields: [roomId],       references: [id])
-  createdBy     User           @relation(fields: [createdById],  references: [id])
-  assignedTo    Technician?    @relation(fields: [assignedToId], references: [id])
-  replies       TicketReply[]
+  room       Room?         @relation(fields: [roomId], references: [id])
+  createdBy  User          @relation(fields: [createdById], references: [id])
+  assignedTo Technician?   @relation(fields: [assignedToId], references: [id])
+  replies    TicketReply[]
 
   @@index([createdById, status])
   @@index([roomId, status])
@@ -401,30 +401,30 @@ model Ticket {
 }
 
 model TicketReply {
-  id            Int           @id @default(autoincrement())
-  ticketId      Int
-  content       String        @db.Text
-  statusChange  TicketStatus?
-  createdById   Int
-  createdAt     DateTime      @default(now())
+  id           Int           @id @default(autoincrement())
+  ticketId     Int
+  content      String        @db.Text
+  statusChange TicketStatus?
+  createdById  Int
+  createdAt    DateTime      @default(now())
 
-  ticket        Ticket        @relation(fields: [ticketId],    references: [id], onDelete: Cascade)
-  createdBy     User          @relation(fields: [createdById], references: [id])
+  ticket    Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  createdBy User   @relation(fields: [createdById], references: [id])
 
   @@index([ticketId, createdAt])
   @@map("ticket_replies")
 }
 
 model RecallAlert {
-  id              Int           @id @default(autoincrement())
-  recallRecordId  Int
-  daysOverdue     Int
-  sentAt          DateTime      @default(now())
-  dismissedAt     DateTime?
-  dismissedById   Int?
+  id             Int       @id @default(autoincrement())
+  recallRecordId Int
+  daysOverdue    Int
+  sentAt         DateTime  @default(now())
+  dismissedAt    DateTime?
+  dismissedById  Int?
 
-  recallRecord    RecallRecord  @relation(fields: [recallRecordId], references: [id], onDelete: Cascade)
-  dismissedBy     User?         @relation(fields: [dismissedById],  references: [id])
+  recallRecord RecallRecord @relation(fields: [recallRecordId], references: [id], onDelete: Cascade)
+  dismissedBy  User?        @relation(fields: [dismissedById], references: [id])
 
   @@index([recallRecordId, sentAt])
   @@index([dismissedAt])

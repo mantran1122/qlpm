@@ -101,12 +101,16 @@ export default function TicketDetailPage({ params }: { params: Promise<{ id: str
   }
 
   if (loading) return (
-    <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-faint)' }}>Đang tải...</div>
+    <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-faint)', fontSize: 14 }}>
+      <Icon name="refresh" size={28} style={{ marginBottom: 12, opacity: 0.4, animation: 'spin 1s linear infinite', display: 'block', margin: '0 auto 12px' }} />
+      <div>Đang tải dữ liệu...</div>
+    </div>
   )
   if (notFound) return (
-    <div style={{ padding: 40, textAlign: 'center' }}>
-      <p style={{ color: 'var(--text-faint)' }}>Không tìm thấy ticket hoặc bạn không có quyền xem.</p>
-      <Button onClick={() => router.back()} variant="ghost">Quay lại</Button>
+    <div style={{ padding: 60, textAlign: 'center' }}>
+      <Icon name="alert" size={28} style={{ color: 'var(--err)', display: 'block', margin: '0 auto 12px' }} />
+      <div style={{ color: 'var(--err-tx)', fontSize: 14, marginBottom: 16 }}>Không tìm thấy ticket hoặc bạn không có quyền xem.</div>
+      <Button onClick={() => router.back()} variant="outline" size="sm" icon="chevronL">Quay lại</Button>
     </div>
   )
   if (!ticket || !userInfo) return null
@@ -134,14 +138,16 @@ export default function TicketDetailPage({ params }: { params: Promise<{ id: str
   const sel = { width: '100%', height: 38, border: '1px solid var(--border-strong)', borderRadius: 10, padding: '0 12px', fontFamily: 'var(--font)', fontSize: 13.5, background: 'var(--surface)', color: 'var(--text)' }
 
   return (
-    <div style={{ padding: '28px 32px', maxWidth: 780, margin: '0 auto' }}>
+    <div className="stack">
       {/* Back */}
-      <button onClick={() => router.back()} style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-faint)', fontSize: 13, background: 'none', border: 'none', cursor: 'pointer', marginBottom: 20, padding: 0 }}>
-        <Icon name="chevronL" size={15} /> Quay lại
-      </button>
+      <div>
+        <button onClick={() => router.back()} className="icon-btn" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-faint)' }}>
+          <Icon name="chevronL" size={16} /> Quay lại danh sách
+        </button>
+      </div>
 
       {/* Header */}
-      <Card style={{ marginBottom: 20 }}>
+      <Card>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: 260 }}>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
@@ -181,7 +187,7 @@ export default function TicketDetailPage({ params }: { params: Promise<{ id: str
       </Card>
 
       {/* Timeline replies */}
-      <div style={{ marginBottom: 20 }}>
+      <Card>
         <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 14, color: 'var(--text-faint)' }}>
           Lịch sử phản hồi ({ticket.replies.length})
         </div>
@@ -213,7 +219,7 @@ export default function TicketDetailPage({ params }: { params: Promise<{ id: str
             })}
           </div>
         )}
-      </div>
+      </Card>
 
       {/* Reply form — chỉ hiển thị cho ADMIN/MANAGER/TECHNICIAN */}
       {canReply && (

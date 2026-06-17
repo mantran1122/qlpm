@@ -31,13 +31,8 @@ function LoginError() {
 
   if (!error) return null
   return (
-    <div style={{
-      display: 'flex', alignItems: 'flex-start', gap: 8,
-      padding: '10px 14px', borderRadius: 10,
-      background: 'var(--err-bg)', color: 'var(--err-tx)',
-      fontSize: 13, fontWeight: 500, lineHeight: 1.4,
-    }}>
-      <AlertCircle size={17} strokeWidth={2} style={{ flexShrink: 0, marginTop: 1 }} />
+    <div className="login-alert" role="alert">
+      <AlertCircle size={18} strokeWidth={2.2} />
       <span>{error}</span>
     </div>
   )
@@ -80,10 +75,10 @@ function CredentialsForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Tên đăng nhập hoặc Email</label>
-        <div className="field">
+    <form onSubmit={handleSubmit} className="login-form">
+      <label className="login-label">
+        <span>Tên đăng nhập hoặc Email</span>
+        <div className="login-field">
           <input
             type="text"
             value={identifier}
@@ -93,46 +88,42 @@ function CredentialsForm() {
             disabled={loading}
           />
         </div>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Mật khẩu</label>
-        <div className="field">
+      </label>
+
+      <label className="login-label">
+        <span>Mật khẩu</span>
+        <div className="login-field">
           <input
             type="password"
             value={password}
             onChange={e => setPassword(e.target.value)}
-            placeholder="••••••••••"
+            placeholder="Nhập mật khẩu"
             autoComplete="current-password"
             disabled={loading}
           />
         </div>
-      </div>
+      </label>
+
       {error && (
-        <div style={{
-          display: 'flex', alignItems: 'flex-start', gap: 8,
-          padding: '10px 14px', borderRadius: 10,
-          background: 'var(--err-bg)', color: 'var(--err-tx)',
-          fontSize: 13, fontWeight: 500, lineHeight: 1.4,
-        }}>
-          <AlertCircle size={17} strokeWidth={2} style={{ flexShrink: 0, marginTop: 1 }} />
+        <div className="login-alert" role="alert">
+          <AlertCircle size={18} strokeWidth={2.2} />
           <span>{error}</span>
         </div>
       )}
+
       <button
         type="submit"
         disabled={loading || !identifier.trim() || !password}
-        style={{
-          width: '100%', height: 46,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-          borderRadius: 11, border: 'none',
-          background: 'var(--primary, #2563eb)', color: '#fff',
-          fontSize: 14, fontWeight: 600,
-          cursor: loading || !identifier.trim() || !password ? 'not-allowed' : 'pointer',
-          opacity: loading || !identifier.trim() || !password ? 0.7 : 1,
-          fontFamily: 'var(--font)',
-        }}
+        className="login-primary-btn"
       >
-        {loading ? <><Loader2 size={18} style={{ animation: 'spin .7s linear infinite' }} /> Đang đăng nhập...</> : 'Đăng nhập'}
+        {loading ? (
+          <>
+            <Loader2 size={19} className="login-spin" />
+            Đang đăng nhập...
+          </>
+        ) : (
+          'Đăng nhập'
+        )}
       </button>
     </form>
   )
@@ -140,100 +131,86 @@ function CredentialsForm() {
 
 export default function LoginPage() {
   const [googleLoading, setGoogleLoading] = useState(false)
-  const [tab, setTab] = useState<'google' | 'credentials'>(disableGoogle ? 'credentials' : 'google')
 
   function handleGoogleLogin() {
     setGoogleLoading(true)
     window.location.href = '/api/auth/google/login'
   }
 
-  const tabStyle = (active: boolean): React.CSSProperties => ({
-    flex: 1, padding: '8px 0', fontSize: 13, fontWeight: active ? 700 : 500,
-    background: 'none', border: 'none', cursor: 'pointer',
-    borderBottom: active ? '2px solid var(--primary, #2563eb)' : '2px solid transparent',
-    color: active ? 'var(--primary, #2563eb)' : 'var(--text-faint)',
-    transition: 'all .15s ease', fontFamily: 'var(--font)',
-  })
-
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'var(--bg)',
-      padding: '24px',
-    }}>
-      <div style={{
-        width: '100%',
-        maxWidth: 440,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 32,
-      }}>
-        {/* Logo & Title */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+    <div className="login-shell">
+      <section className="login-brand-panel" aria-label="Giới thiệu hệ thống">
+        <div className="login-brand-mark">
           <Image
             src="/logo_truong.png"
-            alt="ĐH Nam Cần Thơ"
-            width={200}
-            height={97}
-            style={{ objectFit: 'contain' }}
+            alt="Trường Đại học Nam Cần Thơ"
+            width={196}
+            height={96}
+            className="login-school-logo"
             priority
           />
         </div>
 
-        {/* Login Card */}
-        <div className="card" style={{ padding: '28px 32px 32px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-            <div style={{ textAlign: 'center' }}>
-              <h1 style={{
-                margin: 0, fontSize: 42, fontWeight: 700,
-                color: 'var(--text)', letterSpacing: '-.02em',
-                whiteSpace: 'nowrap',
-              }}>
-                Quản Lý Phòng Máy
-              </h1>
-              <p style={{
-                margin: '6px 0 0', fontSize: 13.5,
-                color: 'var(--text-muted)', lineHeight: 1.5,
-              }}>
-                Đại học Nam Cần Thơ —Trung tâm Ứng dụng phần mềm
-              </p>
-            </div>
+        <div className="login-hero-copy">
+          <h1>
+            Quản lý<br />
+            <span>phòng máy</span>
+          </h1>
+        </div>
 
-            {/* Error from OAuth redirect */}
-            <Suspense fallback={null}><LoginError /></Suspense>
+        <div className="login-visual-stack" aria-hidden="true">
+          <div className="login-circle-card login-circle-card-a">
+            <span>N</span>
+          </div>
+          <div className="login-circle-card login-circle-card-b">
+            <span>♥</span>
+          </div>
+          <div className="login-circle-card login-circle-card-c">
+            <Image src="/logo_truong.png" alt="" width={120} height={58} />
+          </div>
+          <div className="login-circle-card login-circle-card-d">
+            <span>●</span>
+          </div>
+        </div>
+      </section>
 
-            {/* Tab switcher — ẩn khi Google bị tắt */}
+      <section className="login-form-panel" aria-label="Đăng nhập hệ thống">
+        <div className="login-card-wrap">
+          <div className="login-mobile-brand">
+            <Image src="/logo_don.png" alt="NCTU" width={58} height={58} />
+            <span>QL Phòng Máy NCTU</span>
+          </div>
+
+          <div className="login-title-block">
+            <h2>Đăng nhập vào NCTU</h2>
+          </div>
+
+          <div className="login-card">
+            <Suspense fallback={null}>
+              <LoginError />
+            </Suspense>
+
+            <CredentialsForm />
+
+            <p className="login-forgot-note">
+              Quên mật khẩu? Liên hệ quản trị viên.
+            </p>
+
             {!disableGoogle && (
-              <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: 4 }}>
-                <button style={tabStyle(tab === 'google')} onClick={() => setTab('google')}>Google</button>
-                <button style={tabStyle(tab === 'credentials')} onClick={() => setTab('credentials')}>Tài khoản</button>
-              </div>
-            )}
-
-            {/* Google Sign-In */}
-            {!disableGoogle && tab === 'google' && (
               <button
+                type="button"
                 onClick={handleGoogleLogin}
                 disabled={googleLoading}
-                style={{
-                  width: '100%', height: 46,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                  borderRadius: 11, border: '1px solid var(--border-strong)',
-                  background: 'var(--surface)', color: 'var(--text)',
-                  fontSize: 14, fontWeight: 600,
-                  cursor: googleLoading ? 'not-allowed' : 'pointer',
-                  transition: 'all .16s ease', fontFamily: 'var(--font)',
-                  opacity: googleLoading ? 0.7 : 1,
-                }}
+                className="login-google-btn"
               >
                 {googleLoading ? (
-                  <><Loader2 size={18} style={{ animation: 'spin .7s linear infinite' }} /> Đang chuyển hướng...</>
+                  <>
+                    <Loader2 size={19} className="login-spin" />
+                    Đang chuyển hướng...
+                  </>
                 ) : (
                   <>
-                    <svg width="20" height="20" viewBox="0 0 24 24">
+                    <svg width="21" height="21" viewBox="0 0 24 24" aria-hidden="true">
                       <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
                       <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
                       <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
@@ -244,20 +221,13 @@ export default function LoginPage() {
                 )}
               </button>
             )}
-
-            {/* Credentials form */}
-            {(disableGoogle || tab === 'credentials') && <CredentialsForm />}
           </div>
-        </div>
 
-        {/* Footer */}
-        <p style={{
-          textAlign: 'center', fontSize: 12,
-          color: 'var(--text-faint)', margin: 0,
-        }}>
-          © 2026 Trường Đại học Nam Cần Thơ · Hệ thống QL Phòng Máy v1.0
-        </p>
-      </div>
+          <p className="login-footer">
+            © 2026 Trường Đại học Nam Cần Thơ · Hệ thống QL Phòng Máy
+          </p>
+        </div>
+      </section>
     </div>
   )
 }

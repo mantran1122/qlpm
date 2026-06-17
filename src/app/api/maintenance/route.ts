@@ -48,7 +48,10 @@ export async function GET(req: NextRequest) {
         technician: true,
         createdBy: { select: { username: true, email: true, profile: { select: { displayName: true } } } },
       },
-      orderBy: { maintenanceDate: 'desc' },
+      orderBy: [
+        { maintenanceDate: 'desc' },
+        { createdAt: 'desc' },
+      ],
       skip: (page - 1) * limit,
       take: limit,
     }),
@@ -79,7 +82,7 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: 'Body không hợp lệ' }, { status: 400 })
   }
 
-  const { roomCode, isSupplyIntake, maintenanceDate, technicianName, technicianId, notes, ...quantities } = body
+  const { roomCode, isSupplyIntake, maintenanceDate, technicianName, technicianId, notes, machineId, machineNo, ...quantities } = body
 
   if (!maintenanceDate) {
     return Response.json({ error: 'maintenanceDate là bắt buộc' }, { status: 400 })
@@ -117,12 +120,14 @@ export async function POST(req: NextRequest) {
   const log = await prisma.maintenanceLog.create({
     data: {
       roomId,
-      createdById: auth.userId,  // Ghi nhận người tạo để ownership check
+      createdById: auth.userId,
       isSupplyIntake: Boolean(isSupplyIntake),
       maintenanceDate: new Date(String(maintenanceDate)),
       technicianName: technicianName ? String(technicianName) : null,
       technicianId: technicianId ? Number(technicianId) : null,
       notes: notes ? String(notes) : null,
+      machineId: machineId ? Number(machineId) : null,
+      machineNo: machineNo ? Number(machineNo) : null,
       ...qtyData,
     },
     include: { room: { include: { floor: true } }, technician: true },

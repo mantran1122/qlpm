@@ -1,8 +1,8 @@
 import { SignJWT, jwtVerify } from 'jose'
-import { COOKIE_NAME } from '@/lib/edge/jwt'
+import { COOKIE_NAME, getSessionMaxAgeSeconds } from '@/lib/edge/jwt'
 
 export type { UserRole } from '@/lib/edge/jwt'
-export { COOKIE_NAME }
+export { COOKIE_NAME, getSessionMaxAgeSeconds }
 
 export const MAX_LOGIN_ATTEMPTS = 5
 export const LOCKOUT_MINUTES = 30
@@ -20,11 +20,13 @@ export interface JwtPayload {
 }
 
 export async function signToken(payload: JwtPayload): Promise<string> {
+  const maxAgeSeconds = getSessionMaxAgeSeconds(payload.role)
+
   return new SignJWT({ ...payload })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setJti(crypto.randomUUID())
-    .setExpirationTime('15m')
+    .setExpirationTime(`${maxAgeSeconds}s`)
     .sign(getSecret())
 }
 

@@ -1,6 +1,8 @@
 import { jwtVerify } from 'jose'
 
 export type UserRole = 'ADMIN' | 'MANAGER' | 'TECHNICIAN' | 'GUEST'
+export const GUEST_SESSION_MAX_AGE_SECONDS = 30 * 60
+export const STAFF_SESSION_MAX_AGE_SECONDS = 12 * 60 * 60
 
 export interface EdgeJwtPayload {
   userId: number
@@ -18,6 +20,12 @@ const getSecret = () => new TextEncoder().encode(
 
 export const COOKIE_NAME =
   process.env.NODE_ENV === 'production' ? '__Host-token' : 'phong_may_session'
+
+export function getSessionMaxAgeSeconds(role: UserRole): number {
+  return role === 'GUEST'
+    ? GUEST_SESSION_MAX_AGE_SECONDS
+    : STAFF_SESSION_MAX_AGE_SECONDS
+}
 
 export async function verifyJwtEdge(token: string): Promise<EdgeJwtPayload | null> {
   try {

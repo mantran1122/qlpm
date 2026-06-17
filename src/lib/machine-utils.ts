@@ -6,7 +6,7 @@ const ERROR_FIELDS = [
   'mouseError', 'networkError', 'keyboardError',
 ] as const
 
-export function getMachineStatus(machine: Record<string, unknown>): MachineStatus {
+export function getMachineStatus(machine: MachineWithStatus | Record<string, unknown>): MachineStatus {
   return ERROR_FIELDS.some(f => machine[f] != null && machine[f] !== '') ? 'Lỗi' : 'Tốt'
 }
 

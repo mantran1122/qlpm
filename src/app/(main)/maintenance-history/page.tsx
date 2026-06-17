@@ -3,7 +3,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useFetch } from '@/lib/use-fetch'
 import { fmtDate } from '@/lib/app-data'
-import { Card, Badge, Select } from '@/components/app/primitives'
+import { Card, Badge, Select, Button } from '@/components/app/primitives'
 import { Icon } from '@/components/app/icons'
 
 interface ApiRoom { id: number; roomCode: string }
@@ -50,12 +50,23 @@ export default function MaintenanceHistoryPage() {
     return `/api/maintenance?${p}`
   }, [roomFilter])
 
-  const { data: resp, loading, error } = useFetch<PaginatedLogs>(apiUrl)
+  const { data: resp, loading, error, refetch } = useFetch<PaginatedLogs>(apiUrl)
   const { data: rooms } = useFetch<ApiRoom[]>('/api/rooms')
 
-  if (loading) return <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-faint)' }}>Đang tải dữ liệu...</div>
-  if (error)   return <div style={{ padding: 60, textAlign: 'center', color: 'var(--err-tx)' }}>Lỗi tải dữ liệu: {error}</div>
-  if (!resp)   return null
+  if (loading) return (
+    <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-faint)', fontSize: 14 }}>
+      <Icon name="refresh" size={28} style={{ marginBottom: 12, opacity: 0.4, animation: 'spin 1s linear infinite', display: 'block', margin: '0 auto 12px' }} />
+      <div>Đang tải dữ liệu...</div>
+    </div>
+  )
+  if (error) return (
+    <div style={{ padding: 60, textAlign: 'center' }}>
+      <Icon name="alert" size={28} style={{ color: 'var(--err)', display: 'block', margin: '0 auto 12px' }} />
+      <div style={{ color: 'var(--err-tx)', fontSize: 14, marginBottom: 16 }}>Không tải được dữ liệu. Vui lòng thử lại.</div>
+      <Button variant="outline" size="sm" onClick={() => refetch()} icon="refresh">Thử lại</Button>
+    </div>
+  )
+  if (!resp) return null
 
   const allLogs = resp.data
   const filtered = allLogs.filter(m =>

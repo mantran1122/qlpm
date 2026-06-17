@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { exchangeCode, getUserInfo, isAllowedEmail, validateConfig } from '@/lib/google-auth'
-import { signToken, COOKIE_NAME } from '@/lib/auth'
+import { signToken, COOKIE_NAME, getSessionMaxAgeSeconds } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
 export async function GET(req: NextRequest) {
@@ -82,6 +82,7 @@ export async function GET(req: NextRequest) {
     role: user.role,
     ver: user.tokenVersion,
   })
+  const sessionMaxAge = getSessionMaxAgeSeconds(user.role)
 
   const res = NextResponse.redirect(new URL('/?login=success', req.url))
   res.cookies.set({
@@ -90,7 +91,7 @@ export async function GET(req: NextRequest) {
     httpOnly: true,
     path: '/',
     sameSite: 'lax',
-    maxAge: 8 * 3600,
+    maxAge: sessionMaxAge,
     secure: process.env.NODE_ENV === 'production',
   })
   // Xóa state cookie

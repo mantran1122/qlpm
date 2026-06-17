@@ -1,7 +1,7 @@
 'use client'
 import { useFetch } from '@/lib/use-fetch'
 import { supplyLevel } from '@/lib/app-data'
-import { Card, CardHead, Badge } from '@/components/app/primitives'
+import { Card, CardHead, Badge, Button } from '@/components/app/primitives'
 import { Progress } from '@/components/app/charts'
 import { Icon } from '@/components/app/icons'
 
@@ -21,11 +21,22 @@ const SUPPLY_ICON: Record<string, string> = {
 }
 
 export default function SuppliesPage() {
-  const { data: raw, loading, error } = useFetch<SupplyBalance[]>('/api/supplies/balance')
+  const { data: raw, loading, error, refetch } = useFetch<SupplyBalance[]>('/api/supplies/balance')
 
-  if (loading) return <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-faint)', fontSize: 14 }}>Đang tải dữ liệu...</div>
-  if (error)   return <div style={{ padding: 60, textAlign: 'center', color: 'var(--err-tx)', fontSize: 14 }}>Lỗi tải dữ liệu: {error}</div>
-  if (!raw)    return null
+  if (loading) return (
+    <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-faint)', fontSize: 14 }}>
+      <Icon name="refresh" size={28} style={{ marginBottom: 12, opacity: 0.4, animation: 'spin 1s linear infinite', display: 'block', margin: '0 auto 12px' }} />
+      <div>Đang tải dữ liệu...</div>
+    </div>
+  )
+  if (error) return (
+    <div style={{ padding: 60, textAlign: 'center' }}>
+      <Icon name="alert" size={28} style={{ color: 'var(--err)', display: 'block', margin: '0 auto 12px' }} />
+      <div style={{ color: 'var(--err-tx)', fontSize: 14, marginBottom: 16 }}>Không tải được dữ liệu. Vui lòng thử lại.</div>
+      <Button variant="outline" size="sm" onClick={() => refetch()} icon="refresh">Thử lại</Button>
+    </div>
+  )
+  if (!raw) return null
 
   const supplies = raw.map(s => {
     const remain = s.balance

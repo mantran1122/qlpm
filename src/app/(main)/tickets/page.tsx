@@ -298,7 +298,10 @@ export default function TicketsPage() {
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-faint)' }}>Đang tải...</div>
+        <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-faint)', fontSize: 14 }}>
+          <Icon name="refresh" size={28} style={{ marginBottom: 12, opacity: 0.4, animation: 'spin 1s linear infinite', display: 'block', margin: '0 auto 12px' }} />
+          <div>Đang tải dữ liệu...</div>
+        </div>
       ) : tickets.length === 0 ? (
         <Card style={{ textAlign: 'center', padding: 48 }}>
           <Icon name="ticket" size={40} style={{ color: 'var(--text-faint)', marginBottom: 12 }} />

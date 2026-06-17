@@ -199,11 +199,20 @@ export default function RecallDetailPage({ params }: { params: Promise<{ id: str
   const { data: record, loading, error, refetch } = useFetch<RecallDetail>(`/api/recalls/${id}`)
   const onDone = useCallback(() => refetch(), [refetch])
 
-  if (loading) return <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-faint)' }}>Đang tải…</div>
+  if (loading) return (
+    <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-faint)', fontSize: 14 }}>
+      <Icon name="refresh" size={28} style={{ marginBottom: 12, opacity: 0.4, animation: 'spin 1s linear infinite', display: 'block', margin: '0 auto 12px' }} />
+      <div>Đang tải dữ liệu...</div>
+    </div>
+  )
   if (error || !record) return (
     <div style={{ padding: 60, textAlign: 'center' }}>
-      <div style={{ color: 'var(--err-tx)', fontSize: 14 }}>Không tìm thấy bản ghi</div>
-      <Button variant="outline" style={{ marginTop: 16 }} onClick={() => router.push('/recall')}>Quay lại</Button>
+      <Icon name="alert" size={28} style={{ color: 'var(--err)', marginBottom: 12, display: 'block', margin: '0 auto 12px' }} />
+      <div style={{ color: 'var(--err-tx)', fontSize: 14, marginBottom: 16 }}>Không tìm thấy bản ghi hoặc có lỗi khi tải.</div>
+      <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+        <Button variant="outline" size="sm" onClick={() => refetch()} icon="refresh">Thử lại</Button>
+        <Button variant="ghost" size="sm" onClick={() => router.push('/recall')}>Quay lại danh sách</Button>
+      </div>
     </div>
   )
 

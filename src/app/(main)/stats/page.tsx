@@ -1,6 +1,7 @@
 'use client'
 import { useFetch } from '@/lib/use-fetch'
-import { Card, CardHead, Badge } from '@/components/app/primitives'
+import { Card, CardHead, Badge, Button } from '@/components/app/primitives'
+import { Icon } from '@/components/app/icons'
 import { BarChart, DonutChart, Sparkline, Progress } from '@/components/app/charts'
 
 interface SummaryData {
@@ -20,10 +21,21 @@ interface SummaryData {
 }
 
 export default function StatsPage() {
-  const { data: summary, loading, error } = useFetch<SummaryData>('/api/statistics/summary')
+  const { data: summary, loading, error, refetch } = useFetch<SummaryData>('/api/statistics/summary')
 
-  if (loading) return <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-faint)', fontSize: 14 }}>Đang tải dữ liệu...</div>
-  if (error)   return <div style={{ padding: 60, textAlign: 'center', color: 'var(--err-tx)', fontSize: 14 }}>Lỗi tải dữ liệu: {error}</div>
+  if (loading) return (
+    <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-faint)', fontSize: 14 }}>
+      <Icon name="refresh" size={28} style={{ marginBottom: 12, opacity: 0.4, animation: 'spin 1s linear infinite', display: 'block', margin: '0 auto 12px' }} />
+      <div>Đang tải dữ liệu...</div>
+    </div>
+  )
+  if (error) return (
+    <div style={{ padding: 60, textAlign: 'center' }}>
+      <Icon name="alert" size={28} style={{ color: 'var(--err)', display: 'block', margin: '0 auto 12px' }} />
+      <div style={{ color: 'var(--err-tx)', fontSize: 14, marginBottom: 16 }}>Không tải được dữ liệu. Vui lòng thử lại.</div>
+      <Button variant="outline" size="sm" onClick={() => refetch()} icon="refresh">Thử lại</Button>
+    </div>
+  )
   if (!summary) return null
 
   const barKeys = [{ k: 'sw', color: 'var(--soft)', label: 'Phần mềm' }, { k: 'hw', color: 'var(--err)', label: 'Phần cứng' }]

@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useNav } from '@/lib/use-nav'
 import { useFetch } from '@/lib/use-fetch'
 import { STATUS_COLOR } from '@/lib/app-data'
-import { Card, CardHead, Badge } from '@/components/app/primitives'
+import { Card, CardHead, Badge, Button } from '@/components/app/primitives'
 import { Icon } from '@/components/app/icons'
 
 interface ApiRoom {
@@ -21,15 +21,26 @@ export default function SoftwarePage() {
   const go = useNav()
   const router = useRouter()
   const { data: me } = useFetch<{ user: { role: string } | null }>('/api/auth/me')
-  const { data: rooms, loading, error } = useFetch<ApiRoom[]>('/api/rooms')
+  const { data: rooms, loading, error, refetch } = useFetch<ApiRoom[]>('/api/rooms')
 
   useEffect(() => {
     if (me?.user?.role === 'GUEST') router.replace('/dashboard/ktv')
   }, [me, router])
 
-  if (loading || !me) return <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-faint)', fontSize: 14 }}>Đang tải dữ liệu...</div>
-  if (error)   return <div style={{ padding: 60, textAlign: 'center', color: 'var(--err-tx)', fontSize: 14 }}>Lỗi tải dữ liệu: {error}</div>
-  if (!rooms)  return null
+  if (loading || !me) return (
+    <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-faint)', fontSize: 14 }}>
+      <Icon name="refresh" size={28} style={{ marginBottom: 12, opacity: 0.4, animation: 'spin 1s linear infinite', display: 'block', margin: '0 auto 12px' }} />
+      <div>Đang tải dữ liệu...</div>
+    </div>
+  )
+  if (error) return (
+    <div style={{ padding: 60, textAlign: 'center' }}>
+      <Icon name="alert" size={28} style={{ color: 'var(--err)', display: 'block', margin: '0 auto 12px' }} />
+      <div style={{ color: 'var(--err-tx)', fontSize: 14, marginBottom: 16 }}>Không tải được dữ liệu. Vui lòng thử lại.</div>
+      <Button variant="outline" size="sm" onClick={() => refetch()} icon="refresh">Thử lại</Button>
+    </div>
+  )
+  if (!rooms) return null
 
   const swRows = rooms.filter(r => r.softwareCount > 0).sort((a, b) => b.softwareCount - a.softwareCount)
   const hwRows = rooms.filter(r => r.hardwareCount > 0).sort((a, b) => b.hardwareCount - a.hardwareCount)

@@ -1,5 +1,5 @@
 'use client'
-import { useState, useMemo, use } from 'react'
+import { useState, useMemo, use, useEffect } from 'react'
 import type React from 'react'
 import { useRouter } from 'next/navigation'
 import { useFetch } from '@/lib/use-fetch'
@@ -149,7 +149,7 @@ function MachineCell({ m, onClick, isBulkMode, isSelected, onToggleSelect, bulkM
   )
 }
 
-function MachineDialog({ room, machine, onClose, onSave, onDelete, history, canManage }: {
+function MachineDialog({ room, machine, onClose, onSave, onDelete, history, canManage, canViewNotes }: {
   room: { name: string; spec: { cpu: string; ram: string; disk: string; screen: string } }
   machine: UiMachine
   onClose: () => void
@@ -157,6 +157,7 @@ function MachineDialog({ room, machine, onClose, onSave, onDelete, history, canM
   onDelete?: (dbId: number) => Promise<void>
   history: ApiMaintenanceLog[]
   canManage?: boolean
+  canViewNotes?: boolean
 }) {
   const [tab, setTab] = useState('status')
   const [editing, setEditing] = useState(false)
@@ -165,6 +166,10 @@ function MachineDialog({ room, machine, onClose, onSave, onDelete, history, canM
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [showAllHistory, setShowAllHistory] = useState(false)
+  useEffect(() => { setShowAllHistory(false) }, [machine.dbId])
+  const machineHistory = history.filter(h => h.machineNo === machine.id)
+  const visibleHistory = showAllHistory ? machineHistory : machineHistory.slice(0, 5)
   const st = machine.isTeacher ? 'teacher' : (() => {
     const hasSw = errors.includes('software')
     const hasHw = errors.some(e => HW_KEYS.includes(e))
@@ -254,6 +259,14 @@ function MachineDialog({ room, machine, onClose, onSave, onDelete, history, canM
               )
             })}
           </div>
+          {!editing && canViewNotes && (
+            <div style={{ marginTop: 16, padding: '12px 14px', background: 'var(--bg)', borderRadius: 8, border: '1px solid var(--border)' }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-faint)', marginBottom: 6, letterSpacing: '.06em', textTransform: 'uppercase' }}>Ghi chú kỹ thuật viên</div>
+              <div style={{ fontSize: 13, color: machine.rawFields['extraNotes'] ? 'var(--text)' : 'var(--text-faint)', fontStyle: machine.rawFields['extraNotes'] ? 'normal' : 'italic' }}>
+                {machine.rawFields['extraNotes'] || 'Chưa có ghi chú'}
+              </div>
+            </div>
+          )}
           {editing && (
             <div style={{ marginTop: 14 }}>
               <label style={{ fontSize: 12, color: 'var(--text-faint)', fontWeight: 600, display: 'block', marginBottom: 6 }}>
@@ -277,19 +290,19 @@ function MachineDialog({ room, machine, onClose, onSave, onDelete, history, canM
 
       {tab === 'history' && (
         <div style={{ padding: 24 }}>
-          {history.length === 0 ? (
-            <div style={{ textAlign: 'center', color: 'var(--text-faint)', fontSize: 13, padding: 16 }}>Chưa có bản ghi bảo trì phòng này.</div>
+          {machineHistory.length === 0 ? (
+            <div style={{ textAlign: 'center', color: 'var(--text-faint)', fontSize: 13, padding: 16 }}>Chưa có bản ghi bảo trì cho máy này.</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {history.slice(0, 5).map((h, i) => (
+              {visibleHistory.map((h, i) => (
                 <div key={h.id} style={{ display: 'flex', gap: 13 }}>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     <div style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--primary-soft)', color: 'var(--primary)', display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon name="wrench" size={16} /></div>
-                    {i < Math.min(history.length, 5) - 1 && <div style={{ flex: 1, width: 2, background: 'var(--border)', marginTop: 4 }} />}
+                    {i < visibleHistory.length - 1 && <div style={{ flex: 1, width: 2, background: 'var(--border)', marginTop: 4 }} />}
                   </div>
                   <div style={{ paddingBottom: 6 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap' }}>
-                      <span style={{ fontWeight: 600, fontSize: 13.5 }}>Bảo trì phòng</span>
+                      <span style={{ fontWeight: 600, fontSize: 13.5 }}>Máy {machine.id}</span>
                       <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>{fmtDate(h.maintenanceDate)}</span>
                     </div>
                     <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 3 }}>{h.notes ?? '—'}</div>
@@ -297,6 +310,14 @@ function MachineDialog({ room, machine, onClose, onSave, onDelete, history, canM
                   </div>
                 </div>
               ))}
+              {machineHistory.length > 5 && (
+                <button
+                  onClick={() => setShowAllHistory(prev => !prev)}
+                  style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', textAlign: 'left', padding: '4px 0', fontFamily: 'var(--font)' }}
+                >
+                  {showAllHistory ? 'Thu gọn' : `Xem thêm (${machineHistory.length - 5})`}
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -556,6 +577,7 @@ export default function RoomDetailPage({ params }: { params: Promise<{ room: str
   const { data: me } = useFetch<{ user: { role: string } | null }>('/api/auth/me')
   const isAdmin = me?.user?.role === 'ADMIN'
   const isManager = me?.user?.role === 'MANAGER'
+  const isGuest = me?.user?.role === 'GUEST'
   const canManageMachines = isAdmin || isManager
 
   const [machines, setMachines] = useState<UiMachine[]>([])
@@ -781,10 +803,10 @@ export default function RoomDetailPage({ params }: { params: Promise<{ room: str
     { icon: 'screen', label: 'Màn hình', val: effectiveSpec.monitorSpec ?? '—' },
   ]
   const headStats = [
-    { label: 'Tổng số máy',   val: stats.total,               tone: 'info',  icon: 'monitor' },
-    { label: 'Hoạt động tốt', val: stats.good + stats.teacher, tone: 'good', icon: 'checkCircle' },
-    { label: 'Lỗi phần mềm', val: stats.sw,                   tone: 'soft',  icon: 'software' },
-    { label: 'Lỗi phần cứng', val: stats.hw,                  tone: 'err',   icon: 'alert' },
+    { label: 'Tổng số máy',   val: stats.total,                          tone: 'info',  icon: 'monitor'      },
+    { label: 'Hoạt động tốt', val: stats.good + stats.teacher,           tone: 'good',  icon: 'checkCircle'  },
+    { label: 'Lỗi phần mềm', val: stats.sw + stats.both,                 tone: 'soft',  icon: 'software'     },
+    { label: 'Lỗi phần cứng', val: stats.hw + stats.both,                tone: 'err',   icon: 'alert'        },
   ]
   const legend: [string, string][] = [['good','Tốt'],['hw','Lỗi phần cứng'],['sw','Lỗi phần mềm'],['both','Lỗi cả hai'],['teacher','Máy giảng viên']]
   const totalErr = stats.sw + stats.hw + stats.both
@@ -996,6 +1018,7 @@ export default function RoomDetailPage({ params }: { params: Promise<{ room: str
           onDelete={canManageMachines ? handleDeleteMachine : undefined}
           history={roomData.maintenanceLogs}
           canManage={canManageMachines}
+          canViewNotes={!isGuest}
         />
       )}
       {editingLog && (

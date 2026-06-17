@@ -1,4 +1,4 @@
-import { signToken, COOKIE_NAME } from '@/lib/auth'
+import { signToken, COOKIE_NAME, getSessionMaxAgeSeconds } from '@/lib/auth'
 import { verifyJwtEdge } from '@/lib/edge/jwt'
 import { rateLimit } from '@/lib/node/rate-limit'
 import { NextResponse } from 'next/server'
@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
     role: payload.role,
     ver: payload.ver,
   })
+  const sessionMaxAge = getSessionMaxAgeSeconds(payload.role)
 
   // Gia hạn CSRF token cùng lúc
   const csrfToken = req.cookies.get('csrf')?.value ?? crypto.randomUUID().replace(/-/g, '')
@@ -42,7 +43,7 @@ export async function POST(req: NextRequest) {
     httpOnly: true,
     path: '/',
     sameSite: 'lax',
-    maxAge: 30 * 60,
+    maxAge: sessionMaxAge,
     secure: process.env.NODE_ENV === 'production',
   })
 
@@ -52,7 +53,7 @@ export async function POST(req: NextRequest) {
     httpOnly: false,
     path: '/',
     sameSite: 'lax',
-    maxAge: 30 * 60,
+    maxAge: sessionMaxAge,
     secure: process.env.NODE_ENV === 'production',
   })
 
