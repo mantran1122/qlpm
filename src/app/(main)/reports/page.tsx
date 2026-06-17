@@ -644,7 +644,7 @@ export default function ReportsPage() {
   return (
     <div className="stack">
       {/* Tabs + controls */}
-      <Card pad={18}>
+      <Card pad={18} style={{ overflow: 'visible' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
           {TABS.map(t => (
             <button key={t.key}
