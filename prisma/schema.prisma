@@ -109,6 +109,7 @@ model User {
   recallAlertDismissals  RecallAlert[]
   tickets                Ticket[]
   ticketReplies          TicketReply[]
+  supplyAdjustments      SupplyAdjustment[]
 
   @@map("users")
 }
@@ -413,6 +414,40 @@ model TicketReply {
 
   @@index([ticketId, createdAt])
   @@map("ticket_replies")
+}
+
+// ── Supply Management ────────────────────────────────────────────────────────
+
+model SupplyItem {
+  id          Int                @id @default(autoincrement())
+  code        String             @unique @db.VarChar(30)
+  label       String             @db.VarChar(100)
+  icon        String?            @db.VarChar(30)
+  isBuiltin   Boolean            @default(false)
+  isActive    Boolean            @default(true)
+  sortOrder   Int                @default(0)
+  createdAt   DateTime           @default(now())
+  adjustments SupplyAdjustment[]
+
+  @@map("supply_items")
+}
+
+model SupplyAdjustment {
+  id              Int        @id @default(autoincrement())
+  supplyItemId    Int
+  delta           Int
+  reason          String     @db.VarChar(255)
+  coordinatorName String     @db.VarChar(80)
+  note            String?    @db.Text
+  createdById     Int
+  createdAt       DateTime   @default(now())
+
+  supplyItem SupplyItem @relation(fields: [supplyItemId], references: [id])
+  createdBy  User       @relation(fields: [createdById], references: [id])
+
+  @@index([supplyItemId, createdAt])
+  @@index([createdById])
+  @@map("supply_adjustments")
 }
 
 model RecallAlert {
