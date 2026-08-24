@@ -1,33 +1,55 @@
 import { prisma } from '@/lib/prisma'
-import { requireRole, requireCsrf } from '@/lib/node/auth'
+import { requireRoleStrict, requireCsrf } from '@/lib/node/auth'
+import { recordAudit } from '@/lib/node/audit'
 import type { NextRequest } from 'next/server'
 
+const BUILTIN_FIELDS = ['caseQty','cpuQty','ramQty','diskQty','powerQty','monitorQty','monitorCableQty','powerCableQty','mouseQty','networkQty','keyboardQty'] as const
+
+async function availableBalance(tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0], item: { id: number; code: string; isBuiltin: boolean }) {
+  const adjustment = await tx.supplyAdjustment.aggregate({ where: { supplyItemId: item.id }, _sum: { delta: true } })
+  let balance = adjustment._sum.delta ?? 0
+  if (!item.isBuiltin) return balance
+  const field = item.code as (typeof BUILTIN_FIELDS)[number]
+  const [intake, used] = await Promise.all([
+    tx.maintenanceLog.aggregate({ where: { isSupplyIntake: true }, _sum: { [field]: true } }),
+    tx.maintenanceLog.aggregate({ where: { isSupplyIntake: false }, _sum: { [field]: true } }),
+  ])
+  return balance + (intake._sum[field] ?? 0) - (used._sum[field] ?? 0)
+}
+
 export async function POST(req: NextRequest) {
-  const auth = await requireRole(req, 'ADMIN', 'MANAGER', 'TECHNICIAN')
-  if (!auth) return Response.json({ error: 'Không có quyền' }, { status: 403 })
+  const auth = await requireRoleStrict(req, 'ADMIN')
+  if (!auth) return Response.json({ error: 'Chi ADMIN duoc dieu chinh ton kho' }, { status: 403 })
   if (!requireCsrf(req)) return Response.json({ error: 'CSRF invalid' }, { status: 403 })
 
-  const body = await req.json()
+  let body: Record<string, unknown>
+  try { body = await req.json() } catch { return Response.json({ error: 'Du lieu khong hop le' }, { status: 400 }) }
   const supplyItemId = Number(body.supplyItemId)
   const delta = Number(body.delta)
-  const reason = (body.reason ?? '').trim()
-  const coordinatorName = (body.coordinatorName ?? '').trim()
-  const note = (body.note ?? '').trim() || undefined
+  const reason = String(body.reason ?? '').trim()
+  const coordinatorName = String(body.coordinatorName ?? '').trim()
+  const note = String(body.note ?? '').trim() || undefined
 
-  if (!supplyItemId || isNaN(delta) || delta === 0)
-    return Response.json({ error: 'supplyItemId và delta (khác 0) là bắt buộc' }, { status: 400 })
-  if (!reason) return Response.json({ error: 'Vui lòng nhập lý do điều chỉnh' }, { status: 400 })
-  if (!coordinatorName) return Response.json({ error: 'Vui lòng nhập người điều phối' }, { status: 400 })
+  if (!Number.isInteger(supplyItemId) || !Number.isInteger(delta) || delta === 0) return Response.json({ error: 'Vat tu va so luong nguyen khac 0 la bat buoc' }, { status: 400 })
+  if (!reason || !coordinatorName) return Response.json({ error: 'Phai nhap ly do va nguoi doi chieu' }, { status: 400 })
 
-  const item = await prisma.supplyItem.findUnique({ where: { id: supplyItemId } })
-  if (!item || !item.isActive) return Response.json({ error: 'Vật tư không tồn tại' }, { status: 404 })
-
-  const adj = await prisma.supplyAdjustment.create({
-    data: { supplyItemId, delta, reason, coordinatorName, note, createdById: auth.userId },
-    include: {
-      supplyItem: { select: { label: true, code: true } },
-      createdBy: { select: { username: true, profile: { select: { displayName: true } } } },
-    },
-  })
-  return Response.json(adj, { status: 201 })
+  try {
+    const adjustment = await prisma.$transaction(async tx => {
+      const item = await tx.supplyItem.findUnique({ where: { id: supplyItemId } })
+      if (!item || !item.isActive) throw new Error('SUPPLY_NOT_FOUND')
+      const balance = await availableBalance(tx, item)
+      if (delta < 0 && Math.abs(delta) > balance) throw new Error(`INSUFFICIENT_STOCK:${balance}`)
+      return tx.supplyAdjustment.create({
+        data: { supplyItemId, delta, movementType: 'ADJUSTMENT', reason, coordinatorName, note, createdById: auth.payload.userId },
+        include: { supplyItem: { select: { label: true, code: true } }, createdBy: { select: { username: true, profile: { select: { displayName: true } } } } },
+      })
+    }, { isolationLevel: 'Serializable' })
+    recordAudit({ userId: auth.payload.userId, action: 'supply.adjusted', target: `supply:${supplyItemId}`, detail: { delta, reason, coordinatorName } }).catch(() => {})
+    return Response.json(adjustment, { status: 201 })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : ''
+    if (message === 'SUPPLY_NOT_FOUND') return Response.json({ error: 'Vat tu khong ton tai hoac da ngung dung' }, { status: 404 })
+    if (message.startsWith('INSUFFICIENT_STOCK:')) return Response.json({ error: `Khong du ton kho. Ton kha dung: ${message.split(':')[1]}` }, { status: 409 })
+    throw error
+  }
 }

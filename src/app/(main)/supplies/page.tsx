@@ -22,12 +22,53 @@ interface SupplyBalance {
 interface AdjHistory {
   id: number
   delta: number
+  movementType: 'ADJUSTMENT' | 'EXTERNAL_ISSUE'
   reason: string
   coordinatorName: string
+  recipientName: string | null
+  recipientUnit: string | null
+  documentRef: string | null
   note: string | null
   createdAt: string
   supplyItem: { label: string; code: string; icon: string | null }
   createdBy: { username: string; profile: { displayName: string | null } | null }
+}
+
+function IssueSheet({ item, onClose, onDone }: { item: SupplyBalance; onClose: () => void; onDone: () => void }) {
+  const [quantity, setQuantity] = useState('')
+  const [recipientName, setRecipientName] = useState('')
+  const [recipientUnit, setRecipientUnit] = useState('')
+  const [reason, setReason] = useState('')
+  const [documentRef, setDocumentRef] = useState('')
+  const [note, setNote] = useState('')
+  const [confirmed, setConfirmed] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState('')
+  const submit = async () => {
+    const amount = Number(quantity)
+    if (!Number.isInteger(amount) || amount <= 0) return setErr('So luong phai la so nguyen duong')
+    if (amount > item.balance) return setErr(`Khong du ton kho (con ${item.balance})`)
+    if (!recipientName.trim() || !recipientUnit.trim() || !reason.trim() || !documentRef.trim() || !confirmed) return setErr('Hay dien du thong tin ban giao va xac nhan')
+    setSaving(true); setErr('')
+    const res = await csrfFetch('/api/supplies/issue', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ supplyItemId: item.id, quantity: amount, recipientName: recipientName.trim(), recipientUnit: recipientUnit.trim(), reason: reason.trim(), documentRef: documentRef.trim(), note: note.trim() || undefined, confirmed }) })
+    setSaving(false)
+    if (!res.ok) { const d = await res.json(); return setErr(d.error ?? 'Loi khong xac dinh') }
+    onDone()
+  }
+  return <Sheet open onClose={onClose} width={460}>
+    <div style={{ padding: '22px 24px 16px', borderBottom: '1px solid var(--border)' }}><div style={{ fontWeight: 700, fontSize: 15 }}>Xuat vat tu ngoai kho</div><div style={{ fontSize: 12.5, color: 'var(--err-tx)', marginTop: 3 }}>{item.label} - ton kha dung: {item.balance}. Giao dich nay khong the sua/xoa.</div></div>
+    <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <Field label="So luong xuat *"><Input value={quantity} onChange={setQuantity} placeholder="So nguyen duong" icon="supplies" /></Field>
+      <Field label="Nguoi nhan *"><Input value={recipientName} onChange={setRecipientName} placeholder="Ho va ten nguoi nhan" icon="user" /></Field>
+      <Field label="Don vi / noi nhan *"><Input value={recipientUnit} onChange={setRecipientUnit} placeholder="VD: Phong Dao tao" icon="folder" /></Field>
+      <Field label="Muc dich xuat *"><Input value={reason} onChange={setReason} placeholder="Mo ta ro muc dich su dung" icon="edit" /></Field>
+      <Field label="So phieu / chung tu *"><Input value={documentRef} onChange={setDocumentRef} placeholder="VD: PXK-2026-001" icon="folder" /></Field>
+      <Field label="Ghi chu"><textarea value={note} onChange={e => setNote(e.target.value)} rows={2} style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'var(--surface-2)', color: 'var(--text)', fontSize: 13.5, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} /></Field>
+      <label style={{ display: 'flex', gap: 9, fontSize: 13, color: 'var(--text)', cursor: 'pointer' }}><input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} />Toi xac nhan da kiem dem va ban giao dung thong tin tren.</label>
+      {err && <div style={{ background: 'var(--err-bg)', color: 'var(--err-tx)', padding: '10px 14px', borderRadius: 8, fontSize: 13 }}>{err}</div>}
+    </div>
+    <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, justifyContent: 'flex-end' }}><Button variant="ghost" onClick={onClose}>Huy</Button><Button variant="danger" onClick={submit} disabled={saving} icon="trendDown">{saving ? 'Dang xuat...' : 'Xac nhan xuat kho'}</Button></div>
+  </Sheet>
 }
 
 interface HistoryResp { data: AdjHistory[]; total: number }
@@ -192,6 +233,11 @@ function HistorySheet({ item, onClose }: { item: SupplyBalance; onClose: () => v
                 <span style={{ fontSize: 11.5, color: 'var(--text-faint)', flexShrink: 0 }}>{fmtDt(h.createdAt)}</span>
               </div>
               <div style={{ fontSize: 13, color: 'var(--text)', marginTop: 3 }}>{h.reason}</div>
+              {h.movementType === 'EXTERNAL_ISSUE' && (
+                <div style={{ fontSize: 12, color: 'var(--err-tx)', marginTop: 3 }}>
+                  Xuất ngoài kho: {h.recipientName} · {h.recipientUnit} · Chứng từ: {h.documentRef}
+                </div>
+              )}
               <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
                 Điều phối: <strong>{h.coordinatorName}</strong>
                 {' · '}Bởi: {h.createdBy.profile?.displayName ?? h.createdBy.username}
@@ -284,11 +330,13 @@ export default function SuppliesPage() {
   // undefined = sheet closed; null = add-new mode; SupplyBalance = edit mode
   const [editItem, setEditItem] = useState<SupplyBalance | null | undefined>(undefined)
   const [adjustItem, setAdjustItem] = useState<SupplyBalance | null>(null)
+  const [issueItem, setIssueItem] = useState<SupplyBalance | null>(null)
   const [historyItem, setHistoryItem] = useState<SupplyBalance | null>(null)
   const [deleteId, setDeleteId] = useState<number | null>(null)
   const [deleting, setDeleting] = useState(false)
 
   const canManage = me?.user?.role === 'ADMIN' || me?.user?.role === 'MANAGER'
+  const isAdmin = me?.user?.role === 'ADMIN'
 
   const handleDelete = useCallback(async (id: number) => {
     setDeleting(true)
@@ -410,7 +458,8 @@ export default function SuppliesPage() {
                     <td style={{ textAlign: 'right', paddingRight: 16 }}>
                       <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', alignItems: 'center' }}>
                         <IconBtn name="history" size={16} title="Lịch sử điều chỉnh" onClick={() => setHistoryItem(s)} />
-                        <Button size="sm" variant="outline" icon="edit" onClick={() => setAdjustItem(s)}>Điều chỉnh</Button>
+                        {isAdmin && <Button size="sm" variant="outline" icon="edit" onClick={() => setAdjustItem(s)}>Điều chỉnh</Button>}
+                        {isAdmin && <Button size="sm" variant="danger" icon="trendDown" onClick={() => setIssueItem(s)}>Xuất kho</Button>}
                         {canManage && !s.isBuiltin && (
                           <>
                             <IconBtn name="edit" size={16} title="Sửa tên" onClick={() => setEditItem(s)} />
@@ -430,6 +479,9 @@ export default function SuppliesPage() {
       {/* Sheets */}
       {adjustItem && (
         <AdjustSheet item={adjustItem} onClose={() => setAdjustItem(null)} onDone={() => { setAdjustItem(null); refetch() }} />
+      )}
+      {issueItem && (
+        <IssueSheet item={issueItem} onClose={() => setIssueItem(null)} onDone={() => { setIssueItem(null); refetch() }} />
       )}
       {historyItem && (
         <HistorySheet item={historyItem} onClose={() => setHistoryItem(null)} />

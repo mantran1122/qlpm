@@ -436,8 +436,12 @@ model SupplyAdjustment {
   id              Int        @id @default(autoincrement())
   supplyItemId    Int
   delta           Int
+  movementType    String     @default("ADJUSTMENT") @db.VarChar(30)
   reason          String     @db.VarChar(255)
   coordinatorName String     @db.VarChar(80)
+  recipientName   String?    @db.VarChar(100)
+  recipientUnit   String?    @db.VarChar(150)
+  documentRef     String?    @db.VarChar(100)
   note            String?    @db.Text
   createdById     Int
   createdAt       DateTime   @default(now())
@@ -446,6 +450,7 @@ model SupplyAdjustment {
   createdBy  User       @relation(fields: [createdById], references: [id])
 
   @@index([supplyItemId, createdAt])
+  @@index([movementType, createdAt])
   @@index([createdById])
   @@map("supply_adjustments")
 }
