@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
         data: { supplyItemId, delta: -quantity, movementType: 'EXTERNAL_ISSUE', reason, coordinatorName: recipientName, recipientName, recipientUnit, documentRef, note, createdById: auth.payload.userId },
         include: { supplyItem: { select: { label: true, code: true } }, createdBy: { select: { username: true, profile: { select: { displayName: true } } } } },
       })
-    }, { isolationLevel: 'Serializable' })
+    })
     recordAudit({ userId: auth.payload.userId, action: 'supply.external_issued', target: `supply:${supplyItemId}`, detail: { quantity, recipientName, recipientUnit, reason, documentRef } }).catch(() => {})
     return Response.json(issue, { status: 201 })
   } catch (error) {

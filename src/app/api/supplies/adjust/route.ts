@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
         data: { supplyItemId, delta, movementType: 'ADJUSTMENT', reason, coordinatorName, note, createdById: auth.payload.userId },
         include: { supplyItem: { select: { label: true, code: true } }, createdBy: { select: { username: true, profile: { select: { displayName: true } } } } },
       })
-    }, { isolationLevel: 'Serializable' })
+    })
     recordAudit({ userId: auth.payload.userId, action: 'supply.adjusted', target: `supply:${supplyItemId}`, detail: { delta, reason, coordinatorName } }).catch(() => {})
     return Response.json(adjustment, { status: 201 })
   } catch (error) {
