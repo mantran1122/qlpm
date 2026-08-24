@@ -3,7 +3,11 @@ import { requireRoleStrict, requireCsrf } from '@/lib/node/auth'
 import { recordAudit } from '@/lib/node/audit'
 import type { NextRequest } from 'next/server'
 
-const BUILTIN_FIELDS = ['caseQty','cpuQty','ramQty','diskQty','powerQty','monitorQty','monitorCableQty','powerCableQty','mouseQty','networkQty','keyboardQty'] as const
+const BUILTIN_SUM = {
+  caseQty: true, cpuQty: true, ramQty: true, diskQty: true, powerQty: true,
+  monitorQty: true, monitorCableQty: true, powerCableQty: true,
+  mouseQty: true, networkQty: true, keyboardQty: true,
+} as const
 
 export async function POST(req: NextRequest) {
   const auth = await requireRoleStrict(req, 'ADMIN')
@@ -24,10 +28,11 @@ export async function POST(req: NextRequest) {
       const adjustment = await tx.supplyAdjustment.aggregate({ where: { supplyItemId }, _sum: { delta: true } })
       let balance = adjustment._sum.delta ?? 0
       if (item.isBuiltin) {
-        const field = item.code as (typeof BUILTIN_FIELDS)[number]
+        if (!(item.code in BUILTIN_SUM)) throw new Error('INVALID_BUILTIN_SUPPLY')
+        const field = item.code as keyof typeof BUILTIN_SUM
         const [intake, used] = await Promise.all([
-          tx.maintenanceLog.aggregate({ where: { isSupplyIntake: true }, _sum: { [field]: true } }),
-          tx.maintenanceLog.aggregate({ where: { isSupplyIntake: false }, _sum: { [field]: true } }),
+          tx.maintenanceLog.aggregate({ where: { isSupplyIntake: true }, _sum: BUILTIN_SUM }),
+          tx.maintenanceLog.aggregate({ where: { isSupplyIntake: false }, _sum: BUILTIN_SUM }),
         ])
         balance += (intake._sum[field] ?? 0) - (used._sum[field] ?? 0)
       }
