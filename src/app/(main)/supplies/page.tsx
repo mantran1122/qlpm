@@ -52,7 +52,7 @@ function IssueSheet({ item, onClose, onDone }: { item: SupplyBalance; onClose: (
     setSaving(true); setErr('')
     const res = await csrfFetch('/api/supplies/issue', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ supplyItemId: item.id, quantity: amount, recipientName: recipientName.trim(), recipientUnit: recipientUnit.trim(), reason: reason.trim(), documentRef: documentRef.trim(), note: note.trim() || undefined, confirmed }) })
     setSaving(false)
-    if (!res.ok) { const d = await res.json(); return setErr(d.error ?? 'Loi khong xac dinh') }
+    if (!res.ok) { const d = await res.json().catch(() => ({})); return setErr(d.error ?? 'Loi khong xac dinh') }
     onDone()
   }
   return <Sheet open onClose={onClose} width={460}>
@@ -114,7 +114,7 @@ function AdjustSheet({ item, onClose, onDone }: {
       }),
     })
     setSaving(false)
-    if (!res.ok) { const d = await res.json(); return setErr(d.error ?? 'Lỗi không xác định') }
+    if (!res.ok) { const d = await res.json().catch(() => ({})); return setErr(d.error ?? 'Lỗi không xác định') }
     onDone()
   }
 

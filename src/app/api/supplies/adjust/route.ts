@@ -7,7 +7,7 @@ const BUILTIN_FIELDS = ['caseQty','cpuQty','ramQty','diskQty','powerQty','monito
 
 async function availableBalance(tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0], item: { id: number; code: string; isBuiltin: boolean }) {
   const adjustment = await tx.supplyAdjustment.aggregate({ where: { supplyItemId: item.id }, _sum: { delta: true } })
-  let balance = adjustment._sum.delta ?? 0
+  const balance = adjustment._sum.delta ?? 0
   if (!item.isBuiltin) return balance
   const field = item.code as (typeof BUILTIN_FIELDS)[number]
   const [intake, used] = await Promise.all([
