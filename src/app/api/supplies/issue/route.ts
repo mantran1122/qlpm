@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   const supplyItemId = Number(body.supplyItemId); const quantity = Number(body.quantity)
   const recipientName = String(body.recipientName ?? '').trim(); const recipientUnit = String(body.recipientUnit ?? '').trim()
   const reason = String(body.reason ?? '').trim(); const documentRef = String(body.documentRef ?? '').trim()
-  const note = String(body.note ?? '').trim() || undefined
+  const note = String(body.note ?? '').trim() || null
   if (!Number.isInteger(supplyItemId) || !Number.isInteger(quantity) || quantity <= 0) return Response.json({ error: 'Vat tu va so luong nguyen duong la bat buoc' }, { status: 400 })
   if (!recipientName || !recipientUnit || !reason || !documentRef || body.confirmed !== true) return Response.json({ error: 'Phai co nguoi nhan, don vi nhan, muc dich, so chung tu va xac nhan ban giao' }, { status: 400 })
   try {

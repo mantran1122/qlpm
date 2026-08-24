@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
   const delta = Number(body.delta)
   const reason = String(body.reason ?? '').trim()
   const coordinatorName = String(body.coordinatorName ?? '').trim()
-  const note = String(body.note ?? '').trim() || undefined
+  const note = String(body.note ?? '').trim() || null
 
   if (!Number.isInteger(supplyItemId) || !Number.isInteger(delta) || delta === 0) return Response.json({ error: 'Vat tu va so luong nguyen khac 0 la bat buoc' }, { status: 400 })
   if (!reason || !coordinatorName) return Response.json({ error: 'Phai nhap ly do va nguoi doi chieu' }, { status: 400 })
